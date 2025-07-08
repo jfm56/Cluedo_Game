@@ -37,6 +37,31 @@ pip install -r requirements.txt
 python play_cluedo.py
 ```
 
+## Running with Docker
+
+You can use Docker to run the game, tests, lint, or code-server for development. First, build the image:
+
+```bash
+docker build -t cluedo_game .
+```
+
+- **Play the Game:**
+  ```bash
+  docker run --rm -it cluedo_game game
+  ```
+- **Run Tests:**
+  ```bash
+  docker run --rm cluedo_game test
+  ```
+- **Run Lint:**
+  ```bash
+  docker run --rm cluedo_game lint
+  ```
+- **Launch code-server (VS Code in browser, port 8080):**
+  ```bash
+  docker run -p 8080:8080 cluedo_game code-server
+  ```
+
 ## How to Play
 
 1. **Character Selection**: At the start, you select your character from the list of classic Cluedo suspects. Each character starts in a specific room.

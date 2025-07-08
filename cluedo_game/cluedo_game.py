@@ -67,8 +67,21 @@ def main():
                             print("Invalid selection.")
                     except ValueError:
                         print("Please enter a valid number.")
-                # The room is the player's current room
-                suggested_room = player.position
+                # Select a room for the suggestion
+                all_rooms = mansion.get_rooms()
+                print("Select a room to suggest:")
+                for idx, room in enumerate(all_rooms):
+                    print(f"  {idx + 1}. {room}")
+                while True:
+                    try:
+                        room_choice = int(input("Enter number: "))
+                        if 1 <= room_choice <= len(all_rooms):
+                            suggested_room = all_rooms[room_choice - 1]
+                            break
+                        else:
+                            print("Invalid selection.")
+                    except ValueError:
+                        print("Please enter a valid number.")
                 print(f"\nYour suggestion: {suggested_character.name} with the {suggested_weapon.name} in the {suggested_room}.")
                 # Check if suggestion matches the solution
                 if (

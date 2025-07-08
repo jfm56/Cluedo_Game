@@ -45,9 +45,8 @@ python play_cluedo.py
 
 3. **Making Suggestions**:
    - After entering a room, you can choose to make a suggestion.
-   - If you do, you'll select a character and a weapon from the lists shown. The room for your suggestion is always your current room.
+   - If you do, you'll select a character, a weapon, **and any room** from the lists shown (not limited to your current location).
    - The game will display your suggestion.
-
 4. **Winning the Game**:
    - If your suggestion matches the randomly selected solution (character, weapon, and room), you win! The solution is revealed.
    - If your suggestion is incorrect, you'll be told how many guesses remain and can continue playing.

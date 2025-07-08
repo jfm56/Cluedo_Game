@@ -111,7 +111,7 @@ class TestCluedoGame(unittest.TestCase):
         # Inputs: character select, then 6 rounds of (suggestion y, wrong char, wrong weapon, then move room)
         inputs = ["1"]  # select any character
         for _ in range(6):
-            inputs += ["y", "2", "2", "1"]  # always suggest wrong (char 2, weapon 2, move to first adjacent)
+            inputs += ["y", "2", "2", "2", "1"]  # suggest wrong (char 2, weapon 2, room 2, move to first adjacent)
         inputs += ["0"]  # quit after guesses
         input_iter = iter(inputs)
         
@@ -144,9 +144,9 @@ class TestCluedoGame(unittest.TestCase):
         from cluedo_game.character import get_characters
         chars = get_characters()
         chars[0].position = "Ballroom"
-        # Inputs: character select, suggestion y, correct char, correct weapon
+        # Inputs: character select, suggestion y, correct char, correct weapon, correct room
         # Add a dummy input for the move prompt after win (though main() returns after win, so this is just in case)
-        inputs = ["1", "y", "1", "1", "0"]
+        inputs = ["1", "y", "1", "1", "2", "0"]  # room 2 is Ballroom in the room list
         input_iter = iter(inputs)
         with patch("cluedo_game.solution.select_solution", fake_select_solution), \
              patch("builtins.input", lambda *a, **k: next(input_iter)), \

@@ -1,6 +1,6 @@
-# Cluedo_Game
+# Cluedo Game
 
-A Python implementation of the classic Cluedo game, featuring player movement, suggestions, and automated tests.
+A command-line Cluedo (Clue) game implemented in Python, designed for **full Docker usage**. No need to install Python or dependencies locally—everything runs in an isolated container.
 
 ## Features
 - Player movement between rooms
@@ -9,33 +9,31 @@ A Python implementation of the classic Cluedo game, featuring player movement, s
 - Linting with pylint
 - Ready for GitHub Actions CI
 
-## Getting Started
+## Quick Start (Docker Only)
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/jfm56/Cluedo_Game.git
-```
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/jfm56/Cluedo_Game.git
+   cd Cluedo_Game
+   ```
+2. **Build the Docker Image**
+   ```bash
+   docker build -t cluedo_game .
+   ```
+3. **Play the Game**
+   ```bash
+   docker run --rm -it cluedo_game game
+   ```
+4. **Run Tests**
+   ```bash
+   docker run --rm cluedo_game test
+   ```
+5. **Lint the Code**
+   ```bash
+   docker run --rm cluedo_game lint
+   ```
 
-### 2. Navigate to the Project Directory
-```bash
-cd Cluedo_Game
-```
-
-### 3. (Optional) Create and Activate a Virtual Environment
-```bash
-python3 -m venv venv
-source venv/bin/activate   # On Windows: venv\Scripts\activate
-```
-
-### 4. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Run the Game
-```bash
-python play_cluedo.py
-```
+> **Note:** You do NOT need to install Python or pip on your computer. All development, testing, and gameplay are done inside Docker. Local virtual environments are not needed.
 
 ## Running with Docker
 

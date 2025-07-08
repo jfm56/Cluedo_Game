@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  cluedo:
+    image: cluedo_game
+    build: .
+    stdin_open: true
+    tty: true
+    command: game

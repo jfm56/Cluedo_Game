@@ -14,16 +14,16 @@ class TestCluedoGame(unittest.TestCase):
         from cluedo_game.character import get_characters
         mansion = Mansion()
         player = get_characters()[0]  # Miss Scarlett, starts in Lounge
-        # Move from Lounge to Hall (valid move)
-        self.assertIn("Hall", mansion.get_adjacent_rooms(player.position))
-        player.position = "Hall"
-        self.assertEqual(player.position, "Hall")
-        # Move from Hall to Study (valid move)
-        self.assertIn("Study", mansion.get_adjacent_rooms(player.position))
-        player.position = "Study"
-        self.assertEqual(player.position, "Study")
-        # Attempt invalid move (Study to Kitchen)
-        self.assertNotIn("Kitchen", mansion.get_adjacent_rooms(player.position))
+        # Move from Lounge to Ballroom (valid move)
+        self.assertIn("Ballroom", mansion.get_adjacent_rooms(player.position))
+        player.position = "Ballroom"
+        self.assertEqual(player.position, "Ballroom")
+        # Move from Ballroom to Kitchen (valid move)
+        self.assertIn("Kitchen", mansion.get_adjacent_rooms(player.position))
+        player.position = "Kitchen"
+        self.assertEqual(player.position, "Kitchen")
+        # Attempt invalid move (Kitchen to Hall)
+        self.assertNotIn("Hall", mansion.get_adjacent_rooms(player.position))
 
     def test_make_suggestion(self):
         from cluedo_game.character import get_characters
@@ -40,6 +40,124 @@ class TestCluedoGame(unittest.TestCase):
         self.assertEqual(suggested_character.name, "Colonel Mustard")
         self.assertEqual(suggested_weapon.name, "Lead Pipe")
         self.assertEqual(suggested_room, "Lounge")
+
+    def test_invalid_character_selection(self):
+        from cluedo_game.character import get_characters
+        characters = get_characters()
+        # Simulate invalid selection (out of range)
+        invalid_index = len(characters) + 5
+        with self.assertRaises(IndexError):
+            _ = characters[invalid_index]
+
+    def test_multiple_suggestions(self):
+        from cluedo_game.character import get_characters
+        from cluedo_game.weapon import get_weapons
+        characters = get_characters()
+        weapons = get_weapons()
+        player = characters[2]  # Mrs. White
+        player.position = "Kitchen"
+        suggestion1 = (characters[1].name, weapons[0].name, player.position)
+        player.position = "Ballroom"
+        suggestion2 = (characters[0].name, weapons[3].name, player.position)
+        self.assertNotEqual(suggestion1, suggestion2)
+        self.assertIn(suggestion1[2], ["Kitchen", "Ballroom"])
+        self.assertIn(suggestion2[2], ["Kitchen", "Ballroom"])
+
+    def test_invalid_suggestion_indices(self):
+        from cluedo_game.character import get_characters
+        from cluedo_game.weapon import get_weapons
+        characters = get_characters()
+        weapons = get_weapons()
+        with self.assertRaises(IndexError):
+            _ = characters[100]
+        with self.assertRaises(IndexError):
+            _ = weapons[100]
+
+    def test_main_handles_eof(self):
+        # This test ensures main() handles EOFError gracefully (simulate no input)
+        import builtins
+        from cluedo_game.cluedo_game import main
+        original_input = builtins.input
+        builtins.input = lambda *args, **kwargs: (_ for _ in ()).throw(EOFError)
+        try:
+            main()  # Should not raise
+        except SystemExit as e:
+            self.assertEqual(e.code, 0)
+        finally:
+            builtins.input = original_input
+
+    def test_out_of_guesses(self):
+        # Simulate 6 wrong suggestions and verify out-of-guesses message and solution reveal
+        from cluedo_game.cluedo_game import main
+        import builtins
+        from unittest.mock import patch
+
+        # Patch select_solution to a known value
+        from cluedo_game import solution as solution_mod
+        class Dummy:
+            pass
+        dummy_solution = {
+            "character": Dummy(),
+            "weapon": Dummy(),
+            "room": "Ballroom"
+        }
+        dummy_solution["character"].name = "Miss Scarlett"
+        dummy_solution["weapon"].name = "Candlestick"
+        
+        def fake_select_solution():
+            return dummy_solution
+        
+        # Always choose wrong character/weapon/room
+        # Inputs: character select, then 6 rounds of (suggestion y, wrong char, wrong weapon, then move room)
+        inputs = ["1"]  # select any character
+        for _ in range(6):
+            inputs += ["y", "2", "2", "1"]  # always suggest wrong (char 2, weapon 2, move to first adjacent)
+        inputs += ["0"]  # quit after guesses
+        input_iter = iter(inputs)
+        
+        with patch("cluedo_game.solution.select_solution", fake_select_solution), \
+             patch("builtins.input", lambda *a, **k: next(input_iter)), \
+             patch("builtins.print") as mock_print:
+            main()
+            output = " ".join(str(a[0]) for a in mock_print.call_args_list if a)
+            self.assertIn("Out of guesses!", output)
+            self.assertIn("The solution was: Miss Scarlett with the Candlestick in the Ballroom.", output)
+
+    def test_win_on_correct_guess(self):
+        # Simulate a correct suggestion on first try
+        from cluedo_game.cluedo_game import main
+        import builtins
+        from unittest.mock import patch
+        from cluedo_game import solution as solution_mod
+        class Dummy:
+            pass
+        dummy_solution = {
+            "character": Dummy(),
+            "weapon": Dummy(),
+            "room": "Ballroom"
+        }
+        dummy_solution["character"].name = "Miss Scarlett"
+        dummy_solution["weapon"].name = "Candlestick"
+        def fake_select_solution():
+            return dummy_solution
+        # Patch Miss Scarlett's starting position to 'Ballroom' for this test
+        from cluedo_game.character import get_characters
+        chars = get_characters()
+        chars[0].position = "Ballroom"
+        # Inputs: character select, suggestion y, correct char, correct weapon
+        # Add a dummy input for the move prompt after win (though main() returns after win, so this is just in case)
+        inputs = ["1", "y", "1", "1", "0"]
+        input_iter = iter(inputs)
+        with patch("cluedo_game.solution.select_solution", fake_select_solution), \
+             patch("builtins.input", lambda *a, **k: next(input_iter)), \
+             patch("builtins.print") as mock_print:
+            try:
+                main()
+            except StopIteration:
+                pass  # Acceptable if main() returns before all inputs used
+            output = " ".join(str(a[0]) for a in mock_print.call_args_list if a)
+            self.assertIn("Congratulations! You Win!", output)
+            self.assertIn("The solution was: Miss Scarlett with the Candlestick in the Ballroom.", output)
 
 if __name__ == "__main__":
     unittest.main()

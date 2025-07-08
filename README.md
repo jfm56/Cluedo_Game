@@ -57,10 +57,6 @@ docker build -t cluedo_game .
   ```bash
   docker run --rm cluedo_game lint
   ```
-- **Launch code-server (VS Code in browser, port 8080):**
-  ```bash
-  docker run -p 8080:8080 cluedo_game code-server
-  ```
 
 ## How to Play
 

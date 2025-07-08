@@ -11,11 +11,8 @@ case "$1" in
   lint)
     exec pylint cluedo_game
     ;;
-  code-server)
-    exec code-server --bind-addr 0.0.0.0:8080 .
-    ;;
   *)
-    echo "Usage: $0 {game|test|lint|code-server}"
+    echo "Usage: $0 {game|test|lint}"
     exit 1
     ;;
 esac

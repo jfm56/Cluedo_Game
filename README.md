@@ -12,6 +12,9 @@ This project is a command-line implementation of Cluedo in Python. You can play 
 - Player movement between rooms
 - Make suggestions (character, weapon, room)
 - Simple deduction gameplay
+- Tracks all suggestions and refutations in-game
+- View suggestion/refute history at any prompt with `history`
+- Make decisions based on gathered information
 
 ---
 
@@ -25,6 +28,7 @@ This project is a command-line implementation of Cluedo in Python. You can play 
 
 **Tips:**
 - Use deduction to narrow down the possibilities!
+- Type `history` at any prompt to view all suggestions and refutes made so far.
 - The solution is different every game.
 
 ---
@@ -40,11 +44,11 @@ This project is a command-line implementation of Cluedo in Python. You can play 
    ```
 2. **Build the Docker Image**
    ```bash
-   docker build -t cluedo_game .
+   docker build -t project2_sourcecode .
    ```
 3. **Play the Game**
    ```bash
-   docker run --rm -it cluedo_game game
+   docker run --rm -it project2_sourcecode game
    ```
 
 > **Note:** You do NOT need to install Python or pip on your computer. All gameplay is done inside Docker.

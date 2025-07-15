@@ -7,9 +7,13 @@ class Character:
     def __init__(self, name, starting_position):
         self.name = name
         self.position = starting_position
+        self.hand = []  # List of cards dealt to this character
+
+    def add_card(self, card):
+        self.hand.append(card)
 
     def __repr__(self):
-        return f"Character(name={self.name}, position={self.position})"
+        return f"Character(name={self.name}, position={self.position}, hand={self.hand})"
 
 # List of classic Cluedo characters and their starting positions
 # Positions correspond to rooms or mansion locations

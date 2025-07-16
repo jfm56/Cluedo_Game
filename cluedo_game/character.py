@@ -2,6 +2,7 @@
 Character definitions for Cluedo game.
 Defines each character and their starting positions in the mansion.
 """
+import random
 
 class Character:
     def __init__(self, name, starting_position):
@@ -15,24 +16,37 @@ class Character:
     def __repr__(self):
         return f"Character(name={self.name}, position={self.position}, hand={self.hand})"
 
-# List of classic Cluedo characters and their starting positions
-# Positions correspond to rooms or mansion locations
-CHARACTERS = [
-    Character("Miss Scarlett", "Lounge"),
-    Character("Colonel Mustard", "Dining Room"),
-    Character("Mrs. White", "Kitchen"),
-    Character("Reverend Green", "Conservatory"),
-    Character("Mrs. Peacock", "Library"),
-    Character("Professor Plum", "Study")
+# List of classic Cluedo character names
+CHARACTER_NAMES = [
+    "Miss Scarlett",
+    "Colonel Mustard",
+    "Mrs. White",
+    "Reverend Green",
+    "Mrs. Peacock",
+    "Professor Plum"
 ]
 
-def get_characters():
-    """Return a list of all character instances."""
-    return CHARACTERS
+def get_characters(rooms=None):
+    """
+    Return a list of Character instances, each with a random starting position.
+    If rooms is provided, assign each character a unique random room if possible.
+    Otherwise, assign random positions (possibly with repeats).
+    """
+    if rooms is None:
+        # Fallback: use default rooms
+        rooms = [
+            "Lounge", "Dining Room", "Kitchen", "Conservatory", "Library", "Study"
+        ]
+    assigned_rooms = random.sample(rooms, k=min(len(CHARACTER_NAMES), len(rooms)))
+    # If more characters than rooms, allow repeats
+    while len(assigned_rooms) < len(CHARACTER_NAMES):
+        assigned_rooms.append(random.choice(rooms))
+    random.shuffle(assigned_rooms)
+    return [Character(name, assigned_rooms[i]) for i, name in enumerate(CHARACTER_NAMES)]
 
 def get_character_by_name(name):
     """Return a character instance by name, or None if not found."""
-    for character in CHARACTERS:
+    for character in get_characters():
         if character.name == name:
             return character
     return None

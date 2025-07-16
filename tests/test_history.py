@@ -20,8 +20,26 @@ class TestSuggestionHistory(unittest.TestCase):
         history.add('Player1', 'Miss Scarlett', 'Rope', 'Lounge', None, None)
         history.add('Player2', 'Colonel Mustard', 'Dagger', 'Kitchen', 'Player3', 'Dagger')
         s = str(history)
-        self.assertIn('Player1 suggested Miss Scarlett with the Rope in the Lounge; no one refuted', s)
-        self.assertIn('Player2 suggested Colonel Mustard with the Dagger in the Kitchen; refuted by Player3 (card: Dagger)', s)
+        self.assertIn('Player1', s)
+        self.assertIn('Miss Scarlett / Rope / Lounge', s)
+        self.assertIn('Player2', s)
+        self.assertIn('Colonel Mustard / Dagger / Kitchen', s)
+        self.assertIn('Player3', s)
+        self.assertIn('Dagger', s)
+
+    def test_history_str(self):
+        hist = SuggestionHistory()
+        # Human suggestion (should show card)
+        hist.add("Miss Scarlett", "Colonel Mustard", "Candlestick", "Kitchen", "Mrs. White", "Kitchen")
+        # AI suggestion (should NOT show card)
+        hist.add("Colonel Mustard (AI)", "Miss Scarlett", "Rope", "Ballroom", "Mrs. Peacock", "Ballroom")
+        s = str(hist)
+        # Human suggestion row shows card
+        self.assertRegex(s, r"Miss Scarlett.*Kitchen.*Kitchen")
+        # AI suggestion row does not show card, only '—'
+        for line in s.splitlines():
+            if "Colonel Mustard (AI)" in line:
+                self.assertTrue(line.strip().endswith("—"))
 
 if __name__ == '__main__':
     unittest.main()

@@ -11,8 +11,11 @@ case "$1" in
   lint)
     exec pylint cluedo_game
     ;;
+  ai)
+    exec python -m cluedo_game.game_with_ai
+    ;;
   *)
-    echo "Usage: $0 {game|test|lint}"
+    echo "Usage: $0 {game|test|lint|ai}"
     exit 1
     ;;
 esac

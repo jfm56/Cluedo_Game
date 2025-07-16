@@ -18,9 +18,8 @@ class SuggestionHistory:
     def __str__(self):
         if not self.records:
             return "No suggestions yet."
-        header = f"{'Turn':<5} {'Suggester':<12} {'Suggestion':<40} {'Refuter':<12} {'Card Shown':<15}"
-        sep = '-' * len(header)
-        output = [header, sep]
+        # Prepare all data rows first
+        rows = []
         for i, entry in enumerate(self.records, 1):
             suggestion = f"{entry['suggested_character']} / {entry['suggested_weapon']} / {entry['suggested_room']}"
             refuter = entry['refuting_player'] if entry['refuting_player'] else 'None'
@@ -29,6 +28,27 @@ class SuggestionHistory:
                 shown = entry['shown_card'] if entry['shown_card'] else '—'
             else:
                 shown = '—'
-            row = f"{i:<5} {entry['suggesting_player']:<12} {suggestion:<40} {refuter:<12} {shown:<15}"
-            output.append(row)
+            rows.append([
+                str(i),
+                str(entry['suggesting_player']),
+                suggestion,
+                str(refuter),
+                str(shown)
+            ])
+        # Determine max width for each column
+        headers = ["Turn", "Suggester", "Suggestion", "Refuter", "Card Shown"]
+        cols = list(zip(*([headers] + rows)))
+        col_widths = [max(len(str(item)) for item in col) for col in cols]
+        # Build border
+        def border(char_left, char_mid, char_right, char_fill):
+            return char_left + char_mid.join(char_fill * w for w in col_widths) + char_right
+        top = border('+', '+', '+', '-')
+        sep = border('+', '+', '+', '=')
+        # Build header row
+        header_row = '| ' + ' | '.join(f"{headers[i]:<{col_widths[i]}}" for i in range(len(headers))) + ' |'
+        output = [top, header_row, sep]
+        # Build data rows
+        for row in rows:
+            output.append('| ' + ' | '.join(f"{row[i]:<{col_widths[i]}}" for i in range(len(row))) + ' |')
+        output.append(top)
         return "\n".join(output)

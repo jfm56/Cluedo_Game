@@ -96,8 +96,10 @@ class CluedoGameWithAI:
         weapon = self.select_from_list("Weapon", weapons)
         room = self.player.position
         refuting_player, shown_card = self.handle_refutation(suspect, weapon, room)
+        # Always use self.player.name so AI/human is correctly labeled
+        suggester_name = getattr(self.player, 'name', str(self.player))
         self.suggestion_history.add(
-            self.player.name, suspect.name, weapon.name, room, refuting_player, shown_card)
+            suggester_name, suspect.name, weapon.name, room, refuting_player, shown_card)
         if self.solution.character.name == suspect.name and \
            self.solution.weapon.name == weapon.name and \
            self.solution.room == room:

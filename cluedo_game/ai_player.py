@@ -11,6 +11,13 @@ class AIPlayer(Player):
         super().__init__(character, is_human=False)
         self.seen_cards = set()  # Cards the AI has seen (in hand or shown)
 
+    @property
+    def name(self):
+        base = self.character.name
+        if base.endswith(" (AI)"):
+            return base
+        return base + " (AI)"
+
     def take_turn(self, game):
         """
         Take a full turn: move, make suggestion, and check for win.

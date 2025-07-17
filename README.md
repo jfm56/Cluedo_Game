@@ -49,7 +49,7 @@ This project is a command-line implementation of Cluedo in Python. You can play 
    ```
 2. **Build the Docker Image**
    ```bash
-   docker build -t project2_sourcecode .
+  docker build -t cluedo_game .
    ```
 3. **Play the Classic Game (human vs. only refuting computers):**
    ```bash
@@ -57,12 +57,12 @@ This project is a command-line implementation of Cluedo in Python. You can play 
    ```
 4. **Play the AI Opponents Game (human vs. computers who take turns):**
    ```bash
-   docker run --rm -it project2_sourcecode ai
+   docker run --rm -it cluedo_game ai
    ```
 
 > **Note:** You do NOT need to install Python or pip on your computer. All gameplay is done inside Docker.
 > 
-> **Troubleshooting:** If you see no output after running the 'ai' command, make sure your terminal is interactive and your Docker image is up to date. Try rebuilding with `docker build -t project2_sourcecode .` if needed.
+> **Troubleshooting:** If you see no output after running the 'ai' command, make sure your terminal is interactive and your Docker image is up to date. Try rebuilding with `docker build -t cluedo_game .` if needed.
 > 
 > **Important:** The command `python -m cluedo_game.game_with_ai` only works outside Docker. Inside Docker, always use `ai` as shown above.
 

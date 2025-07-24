@@ -32,9 +32,11 @@ class AIPlayer(Player):
         refuting_player, shown_card = game.handle_refutation(
             suggestion['character'], suggestion['weapon'], suggestion['room']
         )
-        # Track seen cards
-        if shown_card:
+        # Track seen cards (EAFP)
+        try:
             self.seen_cards.add(shown_card)
+        except Exception:
+            pass  # Ignore if shown_card is None or unhashable
         # Log suggestion
         game.suggestion_history.add(
             self.name, suggestion['character'].name, suggestion['weapon'].name, suggestion['room'], refuting_player, shown_card

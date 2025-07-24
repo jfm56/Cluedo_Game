@@ -119,11 +119,22 @@ class CluedoGameWithAI:
                 continue
             matching_cards = []
             for card in other.hand:
-                if (hasattr(card, 'name') and (card.name == suspect.name or card.name == weapon.name)) or (isinstance(card, str) and card == room):
-                    matching_cards.append(card)
+                try:
+                    # EAFP: try both attribute and string comparison
+                    if card.name == suspect.name or card.name == weapon.name:
+                        matching_cards.append(card)
+                except AttributeError:
+                    try:
+                        if card == room:
+                            matching_cards.append(card)
+                    except Exception:
+                        pass
             if matching_cards:
                 shown_card = random.choice(matching_cards)
-                shown_card_name = shown_card.name if hasattr(shown_card, 'name') else shown_card
+                try:
+                    shown_card_name = shown_card.name
+                except AttributeError:
+                    shown_card_name = shown_card
                 self.output(f"{other.name} can disprove your suggestion and secretly shows you the card: {shown_card_name}")
                 return other.name, shown_card_name
         self.output("No one can disprove your suggestion!")
@@ -154,7 +165,11 @@ class CluedoGameWithAI:
     def select_from_list(self, prompt, options):
         self.output(f"Select {prompt}:")
         for idx, item in enumerate(options):
-            self.output(f"  {idx + 1}. {item.name if hasattr(item, 'name') else str(item)}")
+            try:
+                item_name = item.name
+            except AttributeError:
+                item_name = str(item)
+            self.output(f"  {idx + 1}. {item_name}")
         while True:
             inp = self.input(f"Enter number for {prompt}: ").strip()
             try:

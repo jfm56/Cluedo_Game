@@ -27,6 +27,9 @@ def get_weapons():
 def get_weapon_by_name(name):
     """Return a weapon instance by name, or None if not found."""
     for weapon in WEAPONS:
-        if weapon.name == name:
-            return weapon
+        try:
+            if weapon.name == name:
+                return weapon
+        except AttributeError:
+            continue
     return None

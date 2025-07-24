@@ -11,8 +11,16 @@ class Suggestion:
         base = f"{self.suggesting_player} suggested {self.character} with {self.weapon} in {self.room}"
         if self.refuting_player:
             # If AI made the suggestion, do not show the card
-            if str(self.suggesting_player).endswith(" (AI)"):
+            try:
+                is_ai = self.suggesting_player.endswith(" (AI)")
+            except AttributeError:
+                is_ai = str(self.suggesting_player).endswith(" (AI)")
+            if is_ai:
                 return f"{base}; refuted by {self.refuting_player}"
             else:
-                return f"{base}; refuted by {self.refuting_player} (card: {self.shown_card})"
+                try:
+                    shown = self.shown_card
+                except AttributeError:
+                    shown = str(self.shown_card)
+                return f"{base}; refuted by {self.refuting_player} (card: {shown})"
         return f"{base}; no one refuted"

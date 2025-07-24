@@ -47,6 +47,9 @@ def get_characters(rooms=None):
 def get_character_by_name(name):
     """Return a character instance by name, or None if not found."""
     for character in get_characters():
-        if character.name == name:
-            return character
+        try:
+            if character.name == name:
+                return character
+        except AttributeError:
+            continue
     return None

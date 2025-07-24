@@ -17,14 +17,28 @@ class Character:
         return f"Character(name={self.name}, position={self.position}, hand={self.hand})"
 
 # List of classic Cluedo character names and their canonical starting spaces
+# CHARACTER_STARTING_SPACES is assigned to match the classic Cluedo board layout as in the provided image:
+#
+#   [C3]   [C4]   [C5]
+#     |      |      |
+# [C2]-Kitchen-Ballroom-Conservatory-[C6]
+#     |      |      |
+# [C1]-Lounge-Hall-Study-[C7]
+#
+# Character tokens:
+#   Miss Scarlett: C1 (bottom left, left of Lounge)
+#   Colonel Mustard: C2 (left middle, below Dining Room)
+#   Mrs. White: C3 (top left, above Kitchen)
+#   Reverend Green: C4 (top middle, above Ballroom)
+#   Mrs. Peacock: C5 (top right, above Conservatory)
+#   Professor Plum: C6 (right middle, right of Study)
 CHARACTER_STARTING_SPACES = {
-    # Canonical corridor spaces for each character (based on classic Cluedo board)
-    "Miss Scarlett": "C7",         # between Lounge and Ballroom
-    "Colonel Mustard": "C8",      # between Lounge and Dining Room
-    "Mrs. White": "C2",           # between Ballroom and Conservatory
-    "Reverend Green": "C3",       # between Conservatory and Library
-    "Mrs. Peacock": "C4",         # between Library and Study
-    "Professor Plum": "C5"         # between Hall and Study
+    "Miss Scarlett": "C1",         # bottom left, left of Lounge
+    "Colonel Mustard": "C2",      # left middle, below Dining Room
+    "Mrs. White": "C3",           # top left, above Kitchen
+    "Reverend Green": "C4",       # top middle, above Ballroom
+    "Mrs. Peacock": "C5",         # top right, above Conservatory
+    "Professor Plum": "C6"         # right middle, right of Study
 }
 CHARACTER_NAMES = list(CHARACTER_STARTING_SPACES.keys())
 

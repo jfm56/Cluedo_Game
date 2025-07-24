@@ -68,8 +68,6 @@ class CluedoGame:
         self.show_hand()
         while True:
             self.output(f"\nCurrent location: {self.player.position}")
-            if not self.suggestion_phase():
-                break  # Player quit
             if self.check_win():
                 return
             if not self.move_phase():
@@ -104,26 +102,37 @@ class CluedoGame:
         for idx, card in enumerate(deck):
             self.characters[idx % len(self.characters)].add_card(card)
 
-    def suggestion_phase(self):
-        while True:
-            inp = self.input("Would you like to make a suggestion? (y/n, 'history', or 'hand'): ").strip().lower()
-            if inp == 'history':
-                self.print_history()
-                continue
-            elif inp == 'hand':
-                self.show_hand()
-                continue
-            elif inp == 'n':
-                return True
-            elif inp == 'y':
-                return self.make_suggestion()
-            elif inp == 'quit':
-                self.output("Thanks for playing!")
-                return False
-            else:
-                self.output("Please enter 'y', 'n', 'history', 'hand', or 'quit'.")
+    # suggestion_phase removed: suggestions now only occur immediately upon entering a room.
 
     def make_suggestion(self):
+        # Player may only suggest in a room
+        current_room = self.player.position
+        if current_room not in self.mansion.get_rooms():
+            self.output("You must be in a room to make a suggestion.")
+            return False
+        self.output(f"\nYou may make a suggestion. You are in the {current_room}.")
+        # Select suspect
+        suspects = [c.name for c in self.characters]
+        suspect = self.select_from_list("suspect", suspects)
+        # Select weapon
+        from cluedo_game.weapon import get_weapons
+        weapons = [w.name for w in get_weapons()]
+        weapon = self.select_from_list("weapon", weapons)
+        # Room is current_room
+        room = current_room
+        self.output(f"\nYou suggest: {suspect}, in the {room}, with the {weapon}.")
+        # Move suspect token into the room
+        for c in self.characters:
+            if c.name == suspect:
+                c.position = room
+                break
+        # Move weapon token into the room
+        for w in get_weapons():
+            if w.name == weapon:
+                w.position = room
+                break
+        # Proceed with refutation as before
+        return self.handle_refutation(suspect, weapon, room)
         # Select suspect
         suspects = [c for c in get_characters()]
         suspect = self.select_from_list("Suspect", suspects)
@@ -214,6 +223,7 @@ class CluedoGame:
             self.output("No spaces reachable!")
 
         moves_left = dice
+        entered_room = False
         while moves_left > 0:
             current = self.player.position
             adjacent = self.mansion.get_adjacent_spaces(current)
@@ -239,11 +249,15 @@ class CluedoGame:
                     moves_left -= 1
                     if next_space in self.mansion.get_rooms():
                         self.output(f"You have entered the {next_space}. Movement ends.")
+                        entered_room = True
                         break
                 else:
                     self.output("Invalid selection.")
             except ValueError:
                 self.output("Please enter a valid number or 'hand'.")
+        # If entered a room, immediately allow suggestion
+        if entered_room:
+            self.make_suggestion()
         return True
 
     def select_from_list(self, prompt, options):

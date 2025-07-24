@@ -18,12 +18,13 @@ class Character:
 
 # List of classic Cluedo character names and their canonical starting spaces
 CHARACTER_STARTING_SPACES = {
-    "Miss Scarlett": "Lounge/ballroom door",
-    "Colonel Mustard": "Lounge/dining room door",
-    "Mrs. White": "Ballroom/conservatory door",
-    "Reverend Green": "Conservatory/library door",
-    "Mrs. Peacock": "Library/study door",
-    "Professor Plum": "Hall/study door"
+    # Canonical corridor spaces for each character (based on classic Cluedo board)
+    "Miss Scarlett": "C7",         # between Lounge and Ballroom
+    "Colonel Mustard": "C8",      # between Lounge and Dining Room
+    "Mrs. White": "C2",           # between Ballroom and Conservatory
+    "Reverend Green": "C3",       # between Conservatory and Library
+    "Mrs. Peacock": "C4",         # between Library and Study
+    "Professor Plum": "C5"         # between Hall and Study
 }
 CHARACTER_NAMES = list(CHARACTER_STARTING_SPACES.keys())
 

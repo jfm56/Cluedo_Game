@@ -26,7 +26,11 @@ class CluedoGame:
                 choice = int(inp)
                 if 1 <= choice <= len(self.characters):
                     self.player = self.characters[choice - 1]
-                    self.output(f"\nYou are {self.player.name}, starting in the {self.player.position}.")
+                    pos = self.player.position
+                    if str(pos).startswith('C'):
+                        self.output(f"\nYou are {self.player.name}, starting at corridor space {pos}.")
+                    else:
+                        self.output(f"\nYou are {self.player.name}, starting in the {pos}.")
                     break
                 else:
                     self.output("Invalid selection.")
@@ -63,7 +67,7 @@ class CluedoGame:
         self.deal_cards()
         self.show_hand()
         while True:
-            self.output(f"\nCurrent room: {self.player.position}")
+            self.output(f"\nCurrent location: {self.player.position}")
             if not self.suggestion_phase():
                 break  # Player quit
             if self.check_win():
@@ -170,30 +174,41 @@ class CluedoGame:
         return None, None
 
     def move_phase(self):
-        adjacent = self.mansion.get_adjacent_rooms(self.player.position)
-        self.output("Adjacent rooms:")
-        for idx, room in enumerate(adjacent):
-            self.output(f"  {idx + 1}. {room}")
-        self.output("  0. Quit")
-        inp = self.input("Move to which room? (number or 'hand'): ").strip().lower()
-        if inp == 'hand':
-            self.show_hand()
-            return self.move_phase()
-        try:
-            move = int(inp)
-            if move == 0:
-                self.output("Thanks for playing!")
-                return False
-            elif 1 <= move <= len(adjacent):
-                self.player.position = adjacent[move - 1]
-                self.output(f"Moved to {self.player.position}.")
-                return True
-            else:
-                self.output("Invalid selection.")
-                return self.move_phase()
-        except ValueError:
-            self.output("Please enter a valid number or 'hand'.")
-            return self.move_phase()
+        # Roll dice for movement
+        dice = random.randint(1, 6) + random.randint(1, 6)
+        self.output(f"You rolled a {dice} for movement.")
+        moves_left = dice
+        while moves_left > 0:
+            current = self.player.position
+            adjacent = self.mansion.get_adjacent_spaces(current)
+            self.output(f"\nCurrent position: {current}")
+            self.output(f"Moves left: {moves_left}")
+            self.output("Adjacent spaces:")
+            for idx, space in enumerate(adjacent):
+                self.output(f"  {idx + 1}. {space}")
+            self.output("  0. Quit")
+            inp = self.input("Move to which space? (number or 'hand'): ").strip().lower()
+            if inp == 'hand':
+                self.show_hand()
+                continue
+            try:
+                move = int(inp)
+                if move == 0:
+                    self.output("Thanks for playing!")
+                    return False
+                elif 1 <= move <= len(adjacent):
+                    next_space = adjacent[move - 1]
+                    self.player.position = next_space
+                    self.output(f"Moved to {next_space}.")
+                    moves_left -= 1
+                    if next_space in self.mansion.get_rooms():
+                        self.output(f"You have entered the {next_space}. Movement ends.")
+                        break
+                else:
+                    self.output("Invalid selection.")
+            except ValueError:
+                self.output("Please enter a valid number or 'hand'.")
+        return True
 
     def select_from_list(self, prompt, options):
         self.output(f"Select {prompt}:")

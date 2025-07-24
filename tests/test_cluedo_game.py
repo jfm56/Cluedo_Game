@@ -21,14 +21,22 @@ class TestCluedoGame(unittest.TestCase):
         self.assertIn(player.position, valid_starting_spaces)
         # Only check adjacency if starting in a room
         if player.position in valid_rooms:
-            adjacent_rooms = mansion.get_adjacent_rooms(player.position)
-            self.assertTrue(len(adjacent_rooms) > 0)
+            adjacent = mansion.get_adjacent_spaces(player.position)
+            # Should be corridors, not rooms
+            self.assertTrue(all(c.startswith("C") for c in adjacent))
         # Move to Kitchen
         player.position = "Kitchen"
         self.assertEqual(player.position, "Kitchen")
-        # Kitchen's adjacents, check not Hall
-        adjacent_rooms = mansion.get_adjacent_rooms(player.position)
-        self.assertTrue(len(adjacent_rooms) > 0)
+        # Kitchen's adjacents, should be corridors
+        adjacent = mansion.get_adjacent_spaces(player.position)
+        self.assertTrue(all(c.startswith("C") for c in adjacent))
+        # Check that at least one of Kitchen's corridors connects to Ballroom
+        ballroom_found = False
+        for corridor in adjacent:
+            if "Ballroom" in mansion.get_adjacent_spaces(corridor):
+                ballroom_found = True
+                break
+        self.assertTrue(ballroom_found, "Ballroom should be reachable from Kitchen via a corridor")
         # Note: movement from starting space to room is handled by game logic, not tested here.
 
     @pytest.mark.skip(reason="pytest cannot capture stdin for CLI input simulation in this test")

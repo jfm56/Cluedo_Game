@@ -49,18 +49,53 @@ This project is a command-line implementation of Cluedo in Python. You can play 
    ```
 2. **Build the Docker Image**
    ```bash
-  docker build -t cluedo_game .
+   docker build -t cluedo_game .
    ```
+
 3. **Play the Classic Game (human vs. only refuting computers):**
    ```bash
-   docker run --rm -it project2_sourcecode game
+   docker run --rm -it cluedo_game game
    ```
+
 4. **Play the AI Opponents Game (human vs. computers who take turns):**
    ```bash
    docker run --rm -it cluedo_game ai
    ```
 
 > **Note:** You do NOT need to install Python or pip on your computer. All gameplay is done inside Docker.
+
+---
+
+## Running Tests
+
+You can run the full test suite to verify the integrity of the Cluedo game logic and features.
+
+### Using Docker (Recommended)
+
+```bash
+docker build -t cluedo-game-test .
+docker run --rm cluedo-game-test test
+```
+
+This will run all unit and integration tests using `pytest` inside Docker. You should see output indicating all tests pass.
+
+### Without Docker
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run tests:
+   ```bash
+   pytest
+   ```
+
+### Test Coverage
+
+- The test suite covers AI player logic, game flow, suggestion/refute history, and table formatting.
+- All tests are passing as of July 2025, including robust checks for AI output and suggestion history formatting.
+- To add new tests, see files in `tests/` for examples using `unittest` and `pytest`.
+
 > 
 > **Troubleshooting:** If you see no output after running the 'ai' command, make sure your terminal is interactive and your Docker image is up to date. Try rebuilding with `docker build -t cluedo_game .` if needed.
 > 

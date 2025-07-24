@@ -16,33 +16,22 @@ class Character:
     def __repr__(self):
         return f"Character(name={self.name}, position={self.position}, hand={self.hand})"
 
-# List of classic Cluedo character names
-CHARACTER_NAMES = [
-    "Miss Scarlett",
-    "Colonel Mustard",
-    "Mrs. White",
-    "Reverend Green",
-    "Mrs. Peacock",
-    "Professor Plum"
-]
+# List of classic Cluedo character names and their canonical starting spaces
+CHARACTER_STARTING_SPACES = {
+    "Miss Scarlett": "Lounge/ballroom door",
+    "Colonel Mustard": "Lounge/dining room door",
+    "Mrs. White": "Ballroom/conservatory door",
+    "Reverend Green": "Conservatory/library door",
+    "Mrs. Peacock": "Library/study door",
+    "Professor Plum": "Hall/study door"
+}
+CHARACTER_NAMES = list(CHARACTER_STARTING_SPACES.keys())
 
 def get_characters(rooms=None):
     """
-    Return a list of Character instances, each with a random starting position.
-    If rooms is provided, assign each character a unique random room if possible.
-    Otherwise, assign random positions (possibly with repeats).
+    Return a list of Character instances, each with their canonical starting position (edge of board).
     """
-    if rooms is None:
-        # Fallback: use default rooms
-        rooms = [
-            "Lounge", "Dining Room", "Kitchen", "Conservatory", "Library", "Study"
-        ]
-    assigned_rooms = random.sample(rooms, k=min(len(CHARACTER_NAMES), len(rooms)))
-    # If more characters than rooms, allow repeats
-    while len(assigned_rooms) < len(CHARACTER_NAMES):
-        assigned_rooms.append(random.choice(rooms))
-    random.shuffle(assigned_rooms)
-    return [Character(name, assigned_rooms[i]) for i, name in enumerate(CHARACTER_NAMES)]
+    return [Character(name, CHARACTER_STARTING_SPACES[name]) for name in CHARACTER_NAMES]
 
 def get_character_by_name(name):
     """Return a character instance by name, or None if not found."""

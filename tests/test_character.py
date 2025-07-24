@@ -8,14 +8,14 @@ class TestCharacter(unittest.TestCase):
 
 
     def test_starting_positions(self):
-        # Check that each character's position matches what get_characters() returns
+        # Check that each character's position matches canonical starting spaces
         chars = get_characters()
-        from cluedo_game.mansion import Mansion
-        valid_rooms = set(Mansion().get_rooms())
+        from cluedo_game.character import CHARACTER_STARTING_SPACES
+        valid_starting_spaces = set(CHARACTER_STARTING_SPACES.values())
         for char in chars:
             character = get_character_by_name(char.name)
             self.assertIsNotNone(character)
-            self.assertIn(character.position, valid_rooms)
+            self.assertIn(character.position, valid_starting_spaces)
 
     def test_get_character_by_name(self):
         scarlett = get_character_by_name("Miss Scarlett")

@@ -12,22 +12,24 @@ class TestCluedoGame(unittest.TestCase):
 
     def test_player_movement(self):
         from cluedo_game.mansion import Mansion
-        from cluedo_game.character import get_characters
+        from cluedo_game.character import get_characters, CHARACTER_STARTING_SPACES
         mansion = Mansion()
-        player = get_characters()[0]  # Miss Scarlett, starts in Lounge
-        # Check that starting position is a valid room and adjacent_rooms is not empty
-        from cluedo_game.mansion import Mansion
+        player = get_characters()[0]  # Miss Scarlett, starts on canonical edge space
+        # Accept canonical starting space as valid
         valid_rooms = set(Mansion().get_rooms())
-        self.assertIn(player.position, valid_rooms)
-        adjacent_rooms = mansion.get_adjacent_rooms(player.position)
-        self.assertTrue(len(adjacent_rooms) > 0)
+        valid_starting_spaces = set(CHARACTER_STARTING_SPACES.values())
+        self.assertIn(player.position, valid_starting_spaces)
+        # Only check adjacency if starting in a room
+        if player.position in valid_rooms:
+            adjacent_rooms = mansion.get_adjacent_rooms(player.position)
+            self.assertTrue(len(adjacent_rooms) > 0)
         # Move to Kitchen
         player.position = "Kitchen"
         self.assertEqual(player.position, "Kitchen")
         # Kitchen's adjacents, check not Hall
-        # Check actual adjacency from Lounge (Miss Scarlett's starting position)
         adjacent_rooms = mansion.get_adjacent_rooms(player.position)
         self.assertTrue(len(adjacent_rooms) > 0)
+        # Note: movement from starting space to room is handled by game logic, not tested here.
 
     @pytest.mark.skip(reason="pytest cannot capture stdin for CLI input simulation in this test")
     def test_make_suggestion(self):

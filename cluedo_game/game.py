@@ -37,6 +37,7 @@ class CluedoGame:
         self.output("Welcome to Cluedo!\n")
         self.select_character()
         self.deal_cards()
+        self.show_hand()
         while True:
             self.output(f"\nCurrent room: {self.player.position}")
             if not self.suggestion_phase():
@@ -45,6 +46,21 @@ class CluedoGame:
                 return
             if not self.move_phase():
                 break  # Player quit
+
+    def show_hand(self):
+        hand = getattr(self.player, 'hand', [])
+        if hand:
+            card_names = []
+            for card in hand:
+                try:
+                    card_names.append(card.name)
+                except AttributeError:
+                    card_names.append(str(card))
+            self.output("\nYour cards:")
+            for c in card_names:
+                self.output(f"  - {c}")
+        else:
+            self.output("\nYou have no cards.")
 
     def deal_cards(self):
         # Remove solution cards from the deck
@@ -62,9 +78,12 @@ class CluedoGame:
 
     def suggestion_phase(self):
         while True:
-            inp = self.input("Would you like to make a suggestion? (y/n or 'history'): ").strip().lower()
+            inp = self.input("Would you like to make a suggestion? (y/n, 'history', or 'hand'): ").strip().lower()
             if inp == 'history':
                 self.print_history()
+                continue
+            elif inp == 'hand':
+                self.show_hand()
                 continue
             elif inp == 'n':
                 return True
@@ -74,7 +93,7 @@ class CluedoGame:
                 self.output("Thanks for playing!")
                 return False
             else:
-                self.output("Please enter 'y', 'n', 'history', or 'quit'.")
+                self.output("Please enter 'y', 'n', 'history', 'hand', or 'quit'.")
 
     def make_suggestion(self):
         # Select suspect
@@ -132,8 +151,12 @@ class CluedoGame:
         for idx, room in enumerate(adjacent):
             self.output(f"  {idx + 1}. {room}")
         self.output("  0. Quit")
+        inp = self.input("Move to which room? (number or 'hand'): ").strip().lower()
+        if inp == 'hand':
+            self.show_hand()
+            return self.move_phase()
         try:
-            move = int(self.input("Move to which room? (number): "))
+            move = int(inp)
             if move == 0:
                 self.output("Thanks for playing!")
                 return False
@@ -145,7 +168,7 @@ class CluedoGame:
                 self.output("Invalid selection.")
                 return self.move_phase()
         except ValueError:
-            self.output("Please enter a valid number.")
+            self.output("Please enter a valid number or 'hand'.")
             return self.move_phase()
 
     def select_from_list(self, prompt, options):

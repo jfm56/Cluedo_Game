@@ -37,15 +37,7 @@ class TestCluedoGameIntegration(unittest.TestCase):
         self.assertIn("Invalid selection.", output_str)
         self.assertIn("You are", output_str)
 
-    def test_history_command_and_out_of_guesses(self):
-        # Select first char, always suggest nonsense, always say 'y', then 'history', then run out of guesses
-        self.inputs = ["1"] + ["y", "1", "1"] * 6  # always pick first suspect/weapon
-        game = CluedoGame(input_func=self.fake_input, output_func=self.fake_output)
-        game.guesses_left = 2  # speed up test
-        game.play()
-        output_str = "\n".join(self.outputs)
-        self.assertIn("Out of guesses!", output_str)
-        self.assertIn("The solution was:", output_str)
+    # Removed: test_history_command_and_out_of_guesses (out-of-guesses logic no longer applies with unlimited suggestions)
 
     def test_suggestion_and_win(self):
         # Force the solution to match the first suspect/weapon/room

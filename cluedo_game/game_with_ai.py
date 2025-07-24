@@ -15,7 +15,7 @@ class CluedoGameWithAI:
         self.characters = get_characters(rooms=self.mansion.get_rooms())
         self.suggestion_history = SuggestionHistory()
         self.solution = Solution.random_solution()
-        self.guesses_left = 6
+
         self.player = None
         self.ai_players = []
 
@@ -41,7 +41,7 @@ class CluedoGameWithAI:
         self.output("Welcome to Cluedo!\n")
         self.select_character()
         self.deal_cards()
-        while self.guesses_left > 0:
+        while True:
             self.output(f"\nCurrent room: {self.player.position}")
             if not self.suggestion_phase():
                 break  # Player quit
@@ -55,8 +55,6 @@ class CluedoGameWithAI:
                 ai_win = ai.take_turn(self)
                 if ai_win:
                     return
-        else:
-            self.out_of_guesses()
 
     def deal_cards(self):
         # Remove solution cards from the deck
@@ -107,8 +105,6 @@ class CluedoGameWithAI:
             self.output(f"The solution was: {self.solution.character.name} with the {self.solution.weapon.name} in the {self.solution.room}.")
             return False
         else:
-            self.guesses_left -= 1
-            self.output(f"Guesses left: {self.guesses_left}")
             return True
 
     def handle_refutation(self, suspect, weapon, room):

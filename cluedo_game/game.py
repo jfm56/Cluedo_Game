@@ -13,7 +13,7 @@ class CluedoGame:
         self.characters = get_characters(rooms=self.mansion.get_rooms())
         self.suggestion_history = SuggestionHistory()
         self.solution = Solution.random_solution()
-        self.guesses_left = 6
+
         self.player = None
 
     def select_character(self):
@@ -37,7 +37,7 @@ class CluedoGame:
         self.output("Welcome to Cluedo!\n")
         self.select_character()
         self.deal_cards()
-        while self.guesses_left > 0:
+        while True:
             self.output(f"\nCurrent room: {self.player.position}")
             if not self.suggestion_phase():
                 break  # Player quit
@@ -45,8 +45,6 @@ class CluedoGame:
                 return
             if not self.move_phase():
                 break  # Player quit
-        else:
-            self.out_of_guesses()
 
     def deal_cards(self):
         # Remove solution cards from the deck
@@ -100,8 +98,6 @@ class CluedoGame:
             self.output(f"The solution was: {self.solution.character.name} with the {self.solution.weapon.name} in the {self.solution.room}.")
             return False
         else:
-            self.guesses_left -= 1
-            self.output(f"Guesses left: {self.guesses_left}")
             return True
 
     def handle_refutation(self, suspect, weapon, room):

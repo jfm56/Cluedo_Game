@@ -177,6 +177,42 @@ class CluedoGame:
         # Roll dice for movement
         dice = random.randint(1, 6) + random.randint(1, 6)
         self.output(f"You rolled a {dice} for movement.")
+
+        # --- Preview reachable spaces ---
+        def reachable_spaces(start, steps):
+            from collections import deque
+            mansion = self.mansion
+            rooms = set(mansion.get_rooms())
+            visited = set()
+            queue = deque()
+            queue.append((start, 0))
+            reachable = set()
+            while queue:
+                pos, dist = queue.popleft()
+                if (pos, dist) in visited:
+                    continue
+                visited.add((pos, dist))
+                if dist > steps:
+                    continue
+                if dist > 0:
+                    reachable.add(pos)
+                # Stop searching past rooms
+                if pos in rooms:
+                    continue
+                for adj in mansion.get_adjacent_spaces(pos):
+                    if (adj, dist + 1) not in visited:
+                        queue.append((adj, dist + 1))
+            return sorted(reachable)
+
+        preview = reachable_spaces(self.player.position, dice)
+        if preview:
+            self.output("\nWith your roll, you could reach:")
+            for space in preview:
+                self.output(f"  - {space}")
+            self.output("(Entering a room ends your movement.)")
+        else:
+            self.output("No spaces reachable!")
+
         moves_left = dice
         while moves_left > 0:
             current = self.player.position

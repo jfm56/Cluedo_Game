@@ -36,6 +36,30 @@ class CluedoGame:
     def play(self):
         self.output("Welcome to Cluedo!\n")
         self.select_character()
+        # Dice roll phase
+        rolls = {}
+        self.output("\nRolling dice to determine play order...")
+        while True:
+            rolls.clear()
+            for char in self.characters:
+                roll = random.randint(1, 6) + random.randint(1, 6)
+                rolls.setdefault(roll, []).append(char)
+                self.output(f"{char.name} rolls a {roll}")
+            max_roll = max(rolls.keys())
+            if len(rolls[max_roll]) == 1:
+                break  # Unique highest roll
+            self.output(f"Tie for highest roll ({max_roll}) between: {', '.join(c.name for c in rolls[max_roll])}. Re-rolling...")
+            self.characters = rolls[max_roll]  # Only tied players roll again
+        # Set play order: winner first, then others in original order after
+        winner = rolls[max_roll][0]
+        idx = self.characters.index(winner)
+        self.characters = self.characters[idx:] + self.characters[:idx]
+        self.output(f"\nPlay order: {', '.join(c.name for c in self.characters)}")
+        # Ensure self.player is set correctly in new order
+        for char in self.characters:
+            if char.name == self.player.name:
+                self.player = char
+                break
         self.deal_cards()
         self.show_hand()
         while True:

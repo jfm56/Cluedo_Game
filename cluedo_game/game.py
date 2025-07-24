@@ -13,7 +13,10 @@ class CluedoGame:
         self.characters = get_characters(rooms=self.mansion.get_rooms())
         self.suggestion_history = SuggestionHistory()
         self.solution = Solution.random_solution()
-
+        self.last_door_passed = {}          # track last room exited via door per player
+        # track elimination status on each character
+        for c in self.characters:
+            c.eliminated = False
         self.player = None
 
     def select_character(self):
@@ -40,178 +43,123 @@ class CluedoGame:
     def play(self):
         self.output("Welcome to Cluedo!\n")
         self.select_character()
-        # Dice roll phase
+        self._roll_for_play_order()
+        self.deal_cards()
+        self.show_hand()
+
+        turn_index = 0
+        while True:
+            self.print_player_locations()
+            current = self.characters[turn_index]
+            # skip eliminated characters
+            if current.eliminated:
+                if current is self.player:
+                    self.output(f"{current.name} has been eliminated. Game over.")
+                    return
+            else:
+                self.player = current
+                # free-form accusation at start of turn
+                if self.prompt_accusation():
+                    return
+                # movement & suggestion
+                if not self.move_phase():
+                    return
+                # default win if one active remains
+                active = [p for p in self.characters if not p.eliminated]
+                if len(active) == 1:
+                    self.winner = active[0]
+                    self.output(f"{self.winner.name} wins by default!")
+                    return
+            turn_index = (turn_index + 1) % len(self.characters)
+
+    def print_player_locations(self):
+        self.output("\n--- Player Locations ---")
+        for player in self.characters:
+            if player.eliminated:
+                status = "(eliminated)"
+            else:
+                status = ""
+            pos = getattr(player, 'position', None)
+            if hasattr(pos, 'name'):
+                pos_str = pos.name
+            else:
+                pos_str = str(pos)
+            self.output(f"{player.name}: {pos_str} {status}")
+        self.output("------------------------\n")
+
+    def _roll_for_play_order(self):
         rolls = {}
         self.output("\nRolling dice to determine play order...")
+        original_order = list(self.characters)
+        contenders = list(self.characters)
         while True:
             rolls.clear()
-            for char in self.characters:
-                roll = random.randint(1, 6) + random.randint(1, 6)
+            for char in contenders:
+                roll = random.randint(1,6) + random.randint(1,6)
                 rolls.setdefault(roll, []).append(char)
                 self.output(f"{char.name} rolls a {roll}")
             max_roll = max(rolls.keys())
             if len(rolls[max_roll]) == 1:
-                break  # Unique highest roll
-            self.output(f"Tie for highest roll ({max_roll}) between: {', '.join(c.name for c in rolls[max_roll])}. Re-rolling...")
-            self.characters = rolls[max_roll]  # Only tied players roll again
-        # Set play order: winner first, then others in original order after
-        winner = rolls[max_roll][0]
-        idx = self.characters.index(winner)
-        self.characters = self.characters[idx:] + self.characters[:idx]
-        self.output(f"\nPlay order: {', '.join(c.name for c in self.characters)}")
-        # Ensure self.player is set correctly in new order
-        for char in self.characters:
-            if char.name == self.player.name:
-                self.player = char
                 break
-        self.deal_cards()
-        self.show_hand()
-        while True:
-            self.output(f"\nCurrent location: {self.player.position}")
-            if self.check_win():
-                return
-            if not self.move_phase():
-                break  # Player quit
+            tie = rolls[max_roll]
+            names = ', '.join(c.name for c in tie)
+            self.output(f"Tie for highest roll ({max_roll}) between: {names}. Re-rolling...")
+            contenders = tie
+        winner = rolls[max_roll][0]
+        # Rotate the full original_order so winner is first, others follow in original order
+        idx = original_order.index(winner)
+        self.characters = original_order[idx:] + original_order[:idx]
+        order_names = ', '.join(c.name for c in self.characters)
+        self.output(f"\nPlay order: {order_names}")
+
+    def deal_cards(self):
+        # build deck excluding the three solution cards
+        sol = self.solution
+        all_chars = get_characters()
+        all_weaps = get_weapons()
+        all_rooms = self.mansion.get_rooms()
+        deck = [c for c in all_chars    if c.name != sol.character.name]
+        deck += [w for w in all_weaps   if w.name != sol.weapon.name]
+        deck += [r for r in all_rooms   if r != sol.room]
+        random.shuffle(deck)
+        # deal round-robin
+        for idx, card in enumerate(deck):
+            player = self.characters[idx % len(self.characters)]
+            player.add_card(card)
 
     def show_hand(self):
         hand = getattr(self.player, 'hand', [])
         if hand:
-            card_names = []
-            for card in hand:
-                try:
-                    card_names.append(card.name)
-                except AttributeError:
-                    card_names.append(str(card))
             self.output("\nYour cards:")
-            for c in card_names:
-                self.output(f"  - {c}")
+            for card in hand:
+                name = getattr(card, 'name', str(card))
+                self.output(f"  - {name}")
         else:
             self.output("\nYou have no cards.")
 
-    def deal_cards(self):
-        # Remove solution cards from the deck
-        all_characters = get_characters()
-        all_weapons = get_weapons()
-        all_rooms = self.mansion.get_rooms()
-        sol = self.solution
-        deal_characters = [c for c in all_characters if c.name != sol.character.name]
-        deal_weapons = [w for w in all_weapons if w.name != sol.weapon.name]
-        deal_rooms = [r for r in all_rooms if r != sol.room]
-        deck = deal_characters + deal_weapons + deal_rooms
-        random.shuffle(deck)
-        for idx, card in enumerate(deck):
-            self.characters[idx % len(self.characters)].add_card(card)
-
-    # suggestion_phase removed: suggestions now only occur immediately upon entering a room.
-
-    def make_suggestion(self):
-        # Player may only suggest in a room
-        current_room = self.player.position
-        if current_room not in self.mansion.get_rooms():
-            self.output("You must be in a room to make a suggestion.")
-            return False
-        self.output(f"\nYou may make a suggestion. You are in the {current_room}.")
-        # Select suspect
-        suspects = [c.name for c in self.characters]
-        suspect = self.select_from_list("suspect", suspects)
-        # Select weapon
-        from cluedo_game.weapon import get_weapons
-        weapons = [w.name for w in get_weapons()]
-        weapon = self.select_from_list("weapon", weapons)
-        # Room is current_room
-        room = current_room
-        self.output(f"\nYou suggest: {suspect}, in the {room}, with the {weapon}.")
-        # Move suspect token into the room
-        for c in self.characters:
-            if c.name == suspect:
-                c.position = room
-                break
-        # Move weapon token into the room
-        for w in get_weapons():
-            if w.name == weapon:
-                w.position = room
-                break
-        # Proceed with refutation as before
-        return self.handle_refutation(suspect, weapon, room)
-        # Select suspect
-        suspects = [c for c in get_characters()]
-        suspect = self.select_from_list("Suspect", suspects)
-        # Select weapon
-        weapons = get_weapons()
-        weapon = self.select_from_list("Weapon", weapons)
-        # Room is current room
-        room = self.player.position
-        # Refutation
-        refuting_player, shown_card = self.handle_refutation(suspect, weapon, room)
-        # Log
-        self.suggestion_history.add(
-            self.player.name, suspect.name, weapon.name, room, refuting_player, shown_card)
-        # Check win
-        if self.solution.character.name == suspect.name and \
-           self.solution.weapon.name == weapon.name and \
-           self.solution.room == room:
-            self.output("\nCongratulations! You Win!")
-            self.output(f"The solution was: {self.solution.character.name} with the {self.solution.weapon.name} in the {self.solution.room}.")
-            return False
-        else:
-            return True
-
-    def handle_refutation(self, suspect, weapon, room):
-        for other in self.characters:
-            if other == self.player:
-                continue
-            matching_cards = []
-            for card in other.hand:
-                try:
-                    if card.name == suspect.name or card.name == weapon.name:
-                        matching_cards.append(card)
-                except AttributeError:
-                    try:
-                        if card == room:
-                            matching_cards.append(card)
-                    except Exception:
-                        pass
-            if matching_cards:
-                shown_card = random.choice(matching_cards)
-                try:
-                    shown_card_name = shown_card.name
-                except AttributeError:
-                    shown_card_name = shown_card
-                self.output(f"{other.name} can disprove your suggestion and secretly shows you the card: {shown_card_name}")
-                return other.name, shown_card_name
-        self.output("No one can disprove your suggestion!")
-        return None, None
-
     def move_phase(self):
-        # Roll dice for movement
-        dice = random.randint(1, 6) + random.randint(1, 6)
+        # roll for movement
+        dice = random.randint(1,6) + random.randint(1,6)
         self.output(f"You rolled a {dice} for movement.")
-
-        # --- Preview reachable spaces ---
+        # preview reachable spaces
         def reachable_spaces(start, steps):
             from collections import deque
-            mansion = self.mansion
-            rooms = set(mansion.get_rooms())
+            rooms = set(self.mansion.get_rooms())
             visited = set()
-            queue = deque()
-            queue.append((start, 0))
+            queue = deque([(start,0)])
             reachable = set()
             while queue:
                 pos, dist = queue.popleft()
-                if (pos, dist) in visited:
+                if (pos,dist) in visited or dist>steps:
                     continue
-                visited.add((pos, dist))
-                if dist > steps:
-                    continue
-                if dist > 0:
+                visited.add((pos,dist))
+                if dist>0:
                     reachable.add(pos)
-                # Stop searching past rooms
                 if pos in rooms:
                     continue
-                for adj in mansion.get_adjacent_spaces(pos):
-                    if (adj, dist + 1) not in visited:
-                        queue.append((adj, dist + 1))
-            return sorted(reachable)
+                for adj in self.mansion.get_adjacent_spaces(pos):
+                    queue.append((adj,dist+1))
+            return sorted(reachable, key=lambda s: getattr(s,'name',str(s)))
 
         preview = reachable_spaces(self.player.position, dice)
         if preview:
@@ -222,72 +170,143 @@ class CluedoGame:
         else:
             self.output("No spaces reachable!")
 
-        moves_left = dice
+        moves = dice
         entered_room = False
-        while moves_left > 0:
+        while moves>0:
             current = self.player.position
             adjacent = self.mansion.get_adjacent_spaces(current)
             self.output(f"\nCurrent position: {current}")
-            self.output(f"Moves left: {moves_left}")
+            self.output(f"Moves left: {moves}")
             self.output("Adjacent spaces:")
-            for idx, space in enumerate(adjacent):
-                self.output(f"  {idx + 1}. {space}")
+            for idx, sp in enumerate(adjacent):
+                self.output(f"  {idx+1}. {sp}")
             self.output("  0. Quit")
-            inp = self.input("Move to which space? (number or 'hand'): ").strip().lower()
-            if inp == 'hand':
+            inp = self.input("Move to which space? ").strip().lower()
+            if inp=='hand':
                 self.show_hand()
                 continue
             try:
-                move = int(inp)
-                if move == 0:
+                choice = int(inp)
+                if choice==0:
                     self.output("Thanks for playing!")
                     return False
-                elif 1 <= move <= len(adjacent):
-                    next_space = adjacent[move - 1]
-                    self.player.position = next_space
-                    self.output(f"Moved to {next_space}.")
-                    moves_left -= 1
-                    if next_space in self.mansion.get_rooms():
-                        self.output(f"You have entered the {next_space}. Movement ends.")
+                if 1<=choice<=len(adjacent):
+                    nxt = adjacent[choice-1]
+                    # record door crossing
+                    if (current in self.mansion.get_rooms() and str(nxt).startswith('C')) or \
+                       (str(current).startswith('C') and nxt in self.mansion.get_rooms()):
+                        self.last_door_passed[self.player] = current
+                    self.player.position = nxt
+                    self.output(f"Moved to {nxt}.")
+                    moves -= 1
+                    if nxt in self.mansion.get_rooms():
+                        self.output(f"You have entered the {nxt}. Movement ends.")
                         entered_room = True
                         break
                 else:
                     self.output("Invalid selection.")
             except ValueError:
                 self.output("Please enter a valid number or 'hand'.")
-        # If entered a room, immediately allow suggestion
+
+        # allow accusation after movement
+        if self.prompt_accusation():
+            return False
+        # suggestion if entered a room
         if entered_room:
-            self.make_suggestion()
+            return self.make_suggestion()
         return True
+
+    def make_suggestion(self):
+        current_room = self.player.position
+        if current_room not in self.mansion.get_rooms():
+            self.output("You must be in a room to make a suggestion.")
+            return True
+        self.output(f"\nYou may make a suggestion. You are in the {current_room}.")
+        suspect = self.select_from_list("suspect", self.characters)
+        weapons = get_weapons()
+        weapon  = self.select_from_list("weapon", weapons)
+        room    = current_room
+        self.output(f"\nYou suggest: {suspect.name}, in the {room.name}, with the {weapon.name}.")
+        # move tokens
+        for c in self.characters:
+            if c.name==suspect.name:
+                c.position = room
+        for w in weapons:
+            if w.name==weapon.name:
+                w.position = room
+        refuter, shown = self.handle_refutation(suspect, weapon, room)
+        self.suggestion_history.add(self.player.name, suspect.name, weapon.name, room, refuter, shown)
+        if (suspect.name==self.solution.character.name and
+            weapon.name==self.solution.weapon.name and
+            room==self.solution.room):
+            self.output("\nCongratulations! You Win!")
+            self.output(f"The solution was: {suspect.name} with the {weapon.name} in the {room.name}.")
+            return False
+        return True
+
+    def handle_refutation(self, suspect, weapon, room):
+        for other in self.characters:
+            if other is self.player:
+                continue
+            matches = []
+            for card in other.hand:
+                if getattr(card,'name',None)==suspect.name or \
+                   getattr(card,'name',None)==weapon.name or \
+                   card is room:
+                    matches.append(card)
+            if matches:
+                shown = random.choice(matches)
+                name = getattr(shown,'name',str(shown))
+                self.output(f"{other.name} can disprove your suggestion and shows you the card: {name}")
+                return other.name, name
+        self.output("No one can disprove your suggestion!")
+        return None, None
+
+    def make_accusation(self, suspect, weapon, room):
+        if (suspect.name==self.solution.character.name and
+            weapon.name==self.solution.weapon.name and
+            room==self.solution.room):
+            self.output("\nCongratulations! You Win!")
+            self.output(f"The solution was: {suspect.name} with the {weapon.name} in the {room.name}.")
+            self.winner = self.player
+            return True
+        self.output("\nIncorrect accusation—sorry, that’s not the solution.")
+        self.player.eliminated = True
+        # blocking door rule
+        last = self.last_door_passed.get(self.player)
+        if last:
+            self.player.position = last
+            self.output("Blocking door rule: you move back into that room.")
+        return False
+
+    def prompt_accusation(self):
+        self.output("\nDo you want to make an accusation? (y/n)")
+        resp = self.input().strip().lower()
+        if resp!='y':
+            return False
+        suspect = self.select_from_list("suspect", self.characters)
+        weapon  = self.select_from_list("weapon", get_weapons())
+        room    = self.select_from_list("room", self.mansion.get_rooms())
+        return self.make_accusation(suspect, weapon, room)
 
     def select_from_list(self, prompt, options):
         self.output(f"Select {prompt}:")
-        for idx, item in enumerate(options):
-            try:
-                item_name = item.name
-            except AttributeError:
-                item_name = str(item)
-            self.output(f"  {idx + 1}. {item_name}")
+        for idx,item in enumerate(options):
+            name = getattr(item,'name',str(item))
+            self.output(f"  {idx+1}. {name}")
         while True:
             inp = self.input(f"Enter number for {prompt}: ").strip()
             try:
-                choice = int(inp)
-                if 1 <= choice <= len(options):
-                    return options[choice - 1]
-                else:
-                    self.output("Invalid selection.")
+                i = int(inp)
+                if 1<=i<=len(options):
+                    return options[i-1]
             except ValueError:
-                self.output("Please enter a valid number.")
+                pass
+            self.output("Invalid selection.")
 
     def check_win(self):
-        # This is now handled in make_suggestion; kept for extensibility
         return False
-
-    def out_of_guesses(self):
-        self.output("\nOut of guesses!")
-        self.output(f"The solution was: {self.solution.character.name} with the {self.solution.weapon.name} in the {self.solution.room}.")
 
     def print_history(self):
         self.output("\n--- Suggestion/Refute History ---")
         self.output(str(self.suggestion_history) if str(self.suggestion_history) else "No suggestions made yet.")
-

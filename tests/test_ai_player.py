@@ -33,7 +33,7 @@ class TestAIPlayer(unittest.TestCase):
         game = DummyGame()
         ai.position = "Dining Room"
         win = ai.take_turn(game)
-        self.assertIn(ai.position, game.mansion.get_rooms())
+        self.assertIn(ai.position, [r.name for r in game.mansion.get_rooms()])
         self.assertIn("AI", game.output_msgs[0] or "")
         self.assertFalse(win or False)  # AI should not win with random suggestion
 

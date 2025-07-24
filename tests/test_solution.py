@@ -18,8 +18,8 @@ class TestSolution(unittest.TestCase):
         # Weapon should be an instance of Weapon
         self.assertIsInstance(solution.weapon, Weapon)
         # Room should be a string and in mansion rooms
-        self.assertIsInstance(solution.room, str)
-        self.assertIn(solution.room, Mansion().get_rooms())
+        self.assertTrue(hasattr(solution.room, 'name'))
+        self.assertIn(solution.room.name, [room.name for room in Mansion().get_rooms()])
 
     def test_randomness(self):
         # Run selection multiple times and ensure at least two different solutions

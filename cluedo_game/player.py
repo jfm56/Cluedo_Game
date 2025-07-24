@@ -1,6 +1,16 @@
 from cluedo_game.character import Character
 
 class Player:
+    """
+    Represents a player (human or AI) in the Cluedo game.
+    Tracks hand, position, and elimination status.
+    """
+    def __init__(self, character: 'Character', is_human=True):
+        self.character = character
+        self.is_human = is_human
+        self.hand = []
+        self.eliminated = False  # True if player made a false accusation
+
     def __init__(self, character: Character, is_human=True):
         self.character = character
         self.is_human = is_human

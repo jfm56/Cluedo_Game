@@ -3,19 +3,31 @@ Representation of the mansion layout for the Cluedo game.
 Contains different rooms such as kitchen, library, ballroom, etc.
 """
 
+class Room:
+    def __init__(self, name):
+        self.name = name
+    def __repr__(self):
+        return f"Room({self.name})"
+    def __eq__(self, other):
+        if isinstance(other, Room):
+            return self.name == other.name
+        return False
+    def __hash__(self):
+        return hash(self.name)
+
 class Mansion:
     def __init__(self):
-        # List of rooms in the mansion
+        # List of rooms in the mansion (as Room objects)
         self.rooms = [
-            "Kitchen",
-            "Ballroom",
-            "Conservatory",
-            "Dining Room",
-            "Billiard Room",
-            "Library",
-            "Lounge",
-            "Hall",
-            "Study"
+            Room("Kitchen"),
+            Room("Ballroom"),
+            Room("Conservatory"),
+            Room("Dining Room"),
+            Room("Billiard Room"),
+            Room("Library"),
+            Room("Lounge"),
+            Room("Hall"),
+            Room("Study")
         ]
         # List of corridor spaces (C1–C12) matching the visual board layout
         # C1: left of Lounge (Miss Scarlett start)
@@ -27,29 +39,31 @@ class Mansion:
         # C7–C12: other corridor/intersection spaces, mapped clockwise
         self.corridors = [f"C{i}" for i in range(1, 13)]
         # Adjacency map matching board image
+        # Helper: room lookup by name
+        self.room_lookup = {room.name: room for room in self.rooms}
         self.adjacency = {
             # Corridors (outer edge, starting positions)
-            "C1": ["Lounge", "C7"],                  # Miss Scarlett start
-            "C2": ["Dining Room", "C8"],            # Colonel Mustard start
-            "C3": ["Kitchen", "C9"],                # Mrs. White start
-            "C4": ["Ballroom", "C10"],              # Reverend Green start
-            "C5": ["Conservatory", "C11"],          # Mrs. Peacock start
-            "C6": ["Study", "C12"],                 # Professor Plum start
+            "C1": [self.room_lookup["Lounge"], "C7"],                  # Miss Scarlett start
+            "C2": [self.room_lookup["Dining Room"], "C8"],            # Colonel Mustard start
+            "C3": [self.room_lookup["Kitchen"], "C9"],                # Mrs. White start
+            "C4": [self.room_lookup["Ballroom"], "C10"],              # Reverend Green start
+            "C5": [self.room_lookup["Conservatory"], "C11"],          # Mrs. Peacock start
+            "C6": [self.room_lookup["Study"], "C12"],                 # Professor Plum start
             # Corridors (inner/intersection)
-            "C7": ["C1", "Hall", "C8"],
-            "C8": ["C2", "Dining Room", "C7", "C9"],
-            "C9": ["C3", "Kitchen", "C8", "C10"],
-            "C10": ["C4", "Ballroom", "C9", "C11"],
-            "C11": ["C5", "Conservatory", "C10", "C12"],
-            "C12": ["C6", "Study", "C11", "Hall"],
+            "C7": ["C1", self.room_lookup["Hall"], "C8"],
+            "C8": ["C2", self.room_lookup["Dining Room"], "C7", "C9"],
+            "C9": ["C3", self.room_lookup["Kitchen"], "C8", "C10"],
+            "C10": ["C4", self.room_lookup["Ballroom"], "C9", "C11"],
+            "C11": ["C5", self.room_lookup["Conservatory"], "C10", "C12"],
+            "C12": ["C6", self.room_lookup["Study"], "C11", self.room_lookup["Hall"]],
             # Room to corridor connections
-            "Lounge": ["C1", "C7"],
-            "Dining Room": ["C2", "C8"],
-            "Kitchen": ["C3", "C9"],
-            "Ballroom": ["C4", "C10"],
-            "Conservatory": ["C5", "C11"],
-            "Study": ["C6", "C12"],
-            "Hall": ["C7", "C12"],
+            self.room_lookup["Lounge"]: ["C1", "C7"],
+            self.room_lookup["Dining Room"]: ["C2", "C8"],
+            self.room_lookup["Kitchen"]: ["C3", "C9"],
+            self.room_lookup["Ballroom"]: ["C4", "C10"],
+            self.room_lookup["Conservatory"]: ["C5", "C11"],
+            self.room_lookup["Study"]: ["C6", "C12"],
+            self.room_lookup["Hall"]: ["C7", "C12"],
         }
 
 

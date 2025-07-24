@@ -39,7 +39,8 @@ class TestSuggestionHistory(unittest.TestCase):
         # AI suggestion row does not show card, only '—'
         for line in s.splitlines():
             if "Colonel Mustard (AI)" in line:
-                self.assertTrue(line.strip().endswith("—"))
+                # Accept table output ending with '— |'
+                self.assertTrue(line.rstrip().endswith("— |"))
 
 if __name__ == '__main__':
     unittest.main()

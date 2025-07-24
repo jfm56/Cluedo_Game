@@ -18,7 +18,7 @@ class DummyInput:
 class TestCluedoGameWithAI(unittest.TestCase):
     def test_ai_players_take_turns(self):
         # Select human as first character, then always 'n' (no suggestion), then move to first room, then quit
-        user_inputs = ["1", "n", "1", "0"]
+        user_inputs = ["1", "n", "1", "0", "n", "0", "n", "0"]
         outputs = []
         game = CluedoGameWithAI(input_func=DummyInput(user_inputs), output_func=outputs.append)
         game.play()

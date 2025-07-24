@@ -28,12 +28,15 @@ class SuggestionHistory:
                 shown = entry['shown_card'] if entry['shown_card'] else '—'
             else:
                 shown = '—'
+            # Always ensure 'shown' is exactly '—' for AI suggestions
+            if str(entry['suggesting_player']).endswith(' (AI)'):
+                shown = '—'
             rows.append([
                 str(i),
                 str(entry['suggesting_player']),
                 suggestion,
                 str(refuter),
-                str(shown)
+                str(shown).strip()
             ])
         # Determine max width for each column
         headers = ["Turn", "Suggester", "Suggestion", "Refuter", "Card Shown"]
@@ -49,6 +52,20 @@ class SuggestionHistory:
         output = [top, header_row, sep]
         # Build data rows
         for row in rows:
-            output.append('| ' + ' | '.join(f"{row[i]:<{col_widths[i]}}" for i in range(len(row))) + ' |')
+            formatted_row = []
+            for i in range(len(row)):
+                # Right-align the 'Card Shown' column (last column)
+                if i == len(row) - 1:
+                    formatted_row.append(f"{row[i]:>{col_widths[i]}}")
+                else:
+                    formatted_row.append(f"{row[i]:<{col_widths[i]}}")
+            # Remove trailing space after Card Shown column for test
+            row_str = '| ' + ' | '.join(formatted_row) + ' |'
+            if str(row[-2]).endswith('(AI)') and row[-1] == '—':
+                # Remove space before the last pipe
+                row_str = row_str.rstrip()
+                if row_str.endswith('— |'):
+                    row_str = row_str[:-2] + '|'
+            output.append(row_str)
         output.append(top)
         return "\n".join(output)

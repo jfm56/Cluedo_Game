@@ -39,6 +39,8 @@ class AIPlayer(Player):
         game.suggestion_history.add(
             self.name, suggestion['character'].name, suggestion['weapon'].name, suggestion['room'], refuting_player, shown_card
         )
+        # Output suggestion and refutation (always output, even if not a win)
+        game.output(f"{self.name} (AI) suggests {suggestion['character'].name} with the {suggestion['weapon'].name} in the {suggestion['room']}. Refuted by {refuting_player} with {shown_card or '—'}.")
         # Check for win
         if (game.solution.character.name == suggestion['character'].name and
             game.solution.weapon.name == suggestion['weapon'].name and

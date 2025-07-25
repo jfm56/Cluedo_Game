@@ -1,7 +1,7 @@
 import random
 from cluedo_game.player import Player
 from cluedo_game.weapon import get_weapons
-from cluedo_game.character import get_characters
+from cluedo_game.cards import get_suspects
 
 class AIPlayer(Player):
     """
@@ -56,9 +56,9 @@ class AIPlayer(Player):
         """
         Pick a random suggestion (could be improved with deduction logic).
         """
-        all_characters = get_characters()
+        all_suspects = get_suspects()
         all_weapons = get_weapons()
         room = self.position
-        character = random.choice(all_characters)
+        character = random.choice(all_suspects)
         weapon = random.choice(all_weapons)
         return {'character': character, 'weapon': weapon, 'room': room}

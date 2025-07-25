@@ -3,21 +3,16 @@ Weapon definitions for the Cluedo game.
 Defines each weapon used in the game.
 """
 
-class Weapon:
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        return f"Weapon(name={self.name})"
+from cluedo_game.cards import WeaponCard
 
 # List of classic Cluedo weapons
 WEAPONS = [
-    Weapon("Candlestick"),
-    Weapon("Dagger"),
-    Weapon("Lead Pipe"),
-    Weapon("Revolver"),
-    Weapon("Rope"),
-    Weapon("Wrench")
+    WeaponCard("Candlestick"),
+    WeaponCard("Dagger"),
+    WeaponCard("Lead Pipe"),
+    WeaponCard("Revolver"),
+    WeaponCard("Rope"),
+    WeaponCard("Wrench")
 ]
 
 def get_weapons():
@@ -27,9 +22,6 @@ def get_weapons():
 def get_weapon_by_name(name):
     """Return a weapon instance by name, or None if not found."""
     for weapon in WEAPONS:
-        try:
-            if weapon.name == name:
-                return weapon
-        except AttributeError:
-            continue
+        if weapon.name == name:
+            return weapon
     return None

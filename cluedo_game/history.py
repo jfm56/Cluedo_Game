@@ -16,17 +16,33 @@ class SuggestionHistory:
         return self.records
 
     def __str__(self):
-        if not self.records:
+        try:
+            first = self.records[0]
+        except IndexError:
             return "No suggestions yet."
+
         # Prepare all data rows first
         rows = []
         for i, entry in enumerate(self.records, 1):
             suggestion = f"{entry['suggested_character']} / {entry['suggested_weapon']} / {entry['suggested_room']}"
-            refuter = entry['refuting_player'] if entry['refuting_player'] else 'None'
+            try:
+                refuter = entry['refuting_player']
+                if not refuter:
+                    raise KeyError
+            except (KeyError, TypeError):
+                refuter = 'None'
             # Only show the card if the suggester is the human (does not end with ' (AI)')
-            if entry['refuting_player'] and not str(entry['suggesting_player']).endswith(' (AI)'):
-                shown = entry['shown_card'] if entry['shown_card'] else '—'
-            else:
+            try:
+                if entry['refuting_player'] and not str(entry['suggesting_player']).endswith(' (AI)'):
+                    try:
+                        shown = entry['shown_card']
+                        if not shown:
+                            raise KeyError
+                    except (KeyError, TypeError):
+                        shown = '—'
+                else:
+                    shown = '—'
+            except KeyError:
                 shown = '—'
             # Always ensure 'shown' is exactly '—' for AI suggestions
             if str(entry['suggesting_player']).endswith(' (AI)'):

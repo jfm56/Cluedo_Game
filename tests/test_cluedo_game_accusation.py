@@ -3,19 +3,17 @@ from unittest.mock import patch
 
 from cluedo_game.game     import CluedoGame
 from cluedo_game.solution   import Solution
-from cluedo_game.weapon import Weapon
-from cluedo_game.mansion import Room
-from cluedo_game.character import Character  # Use Character as Suspect if needed
-from cluedo_game.weapon   import get_weapons
+from cluedo_game.cards import SuspectCard, WeaponCard, RoomCard
+from cluedo_game.weapon import get_weapons
 
 class TestCluedoGameIntegration(unittest.TestCase):
 
     def test_player_can_win_with_accusation_anywhere(self):
         # Force the solution
         forced = Solution(
-            character=Character('Miss Scarlett', 'C1'),
-            weapon=Weapon('Rope'),
-            room=Room('Lounge'),
+            character=SuspectCard("Miss Scarlett"),
+            weapon=WeaponCard("Rope"),
+            room=RoomCard("Lounge"),
         )
         with patch.object(Solution, 'random_solution', lambda: forced):
             # Setup game and select first character
@@ -46,18 +44,21 @@ class TestCluedoGameIntegration(unittest.TestCase):
             )
 
             joined = '\n'.join(outputs)
-            self.assertTrue(result, "Correct accusation did not return True")
-            self.assertIn("Congratulations! You Win!", joined)
-            self.assertIn(forced.character.name, joined)
-            self.assertIn(forced.weapon.name, joined)
-            self.assertIn(forced.room.name, joined)
+            try:
+                self.assertTrue(result, "Correct accusation did not return True")
+                self.assertIn("Congratulations! You Win!", joined)
+                self.assertIn(forced.character.name, joined)
+                self.assertIn(forced.weapon.name, joined)
+                self.assertIn(forced.room.name, joined)
+            except Exception as e:
+                self.fail(f"Winning accusation output check failed: {e}")
 
     def test_player_is_eliminated_after_false_accusation(self):
         # Force the solution
         forced = Solution(
-            character=Character('Miss Scarlett', 'C1'),
-            weapon=Weapon('Rope'),
-            room=Room('Lounge'),
+            character=SuspectCard("Miss Scarlett"),
+            weapon=WeaponCard("Rope"),
+            room=RoomCard("Lounge"),
         )
         with patch.object(Solution, 'random_solution', lambda: forced):
             game = CluedoGame(input_func=lambda _: '1', output_func=lambda m: None)
@@ -66,22 +67,25 @@ class TestCluedoGameIntegration(unittest.TestCase):
             human = game.player
 
             # Make a false accusation (wrong weapon)
-            wrong_weapon = Weapon('Candlestick')
+            wrong_weapon = WeaponCard("Candlestick")
             result = game.make_accusation(
                 suspect=forced.character,
                 weapon=wrong_weapon,
                 room=forced.room
             )
 
-            self.assertFalse(result, "False accusation did not return False")
-            self.assertTrue(human.eliminated, "Player was not marked eliminated after false accusation")
+            try:
+                self.assertFalse(result, "False accusation did not return False")
+                self.assertTrue(human.eliminated, "Player was not marked eliminated after false accusation")
+            except Exception as e:
+                self.fail(f"False accusation elimination check failed: {e}")
 
     def test_player_can_win_unrefuted(self):
         # Force the solution
         forced = Solution(
-            character=Character('Miss Scarlett', 'C1'),
-            weapon=Weapon('Rope'),
-            room=Room('Lounge'),
+            character=SuspectCard("Miss Scarlett"),
+            weapon=WeaponCard("Rope"),
+            room=RoomCard("Lounge"),
         )
         with patch.object(Solution, 'random_solution', lambda: forced):
             # Setup game
@@ -124,9 +128,9 @@ class TestCluedoGameIntegration(unittest.TestCase):
     def test_blocking_door_rule_on_false_accusation(self):
         # Force the solution
         forced = Solution(
-            character=Character('Miss Scarlett', 'C1'),
-            weapon=Weapon('Rope'),
-            room=Room('Lounge'),
+            character=SuspectCard("Miss Scarlett"),
+            weapon=WeaponCard("Rope"),
+            room=RoomCard("Lounge"),
         )
         with patch.object(Solution, 'random_solution', lambda: forced):
             game = CluedoGame(input_func=lambda _: '1', output_func=lambda m: None)
@@ -142,15 +146,18 @@ class TestCluedoGameIntegration(unittest.TestCase):
             human.position = corridor
 
             # False accusation
-            wrong_weapon = Weapon('Candlestick')
+            wrong_weapon = WeaponCard("Candlestick")
             result = game.make_accusation(
                 suspect=forced.character,
                 weapon=wrong_weapon,
                 room=lounge
             )
 
-            self.assertFalse(result, "False accusation did not return False")
-            self.assertEqual(human.position, lounge, "Blocking door rule did not move player back into room")
+            try:
+                self.assertFalse(result, "False accusation did not return False")
+                self.assertEqual(human.position, lounge, "Blocking door rule did not move player back into room")
+            except Exception as e:
+                self.fail(f"Blocking door rule check failed: {e}")
 
 if __name__ == '__main__':
     unittest.main()

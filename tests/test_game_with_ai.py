@@ -26,8 +26,11 @@ class TestCluedoGameWithAI(unittest.TestCase):
         # (AI turns may not occur if the human player quits immediately)
         # Optionally, print outputs for debugging
         # print(outputs)
-        self.assertIsInstance(outputs, list)
-        self.assertGreaterEqual(len(outputs), 1)
+        try:
+            self.assertIsInstance(outputs, list)
+            self.assertGreaterEqual(len(outputs), 1)
+        except Exception as e:
+            self.fail(f"AI player turn output check failed: {e}")
 
     def test_deal_cards_to_all_players(self):
         # Simulate setup and deal
@@ -36,8 +39,11 @@ class TestCluedoGameWithAI(unittest.TestCase):
         game.deal_cards()
         all_players = [game.player] + game.ai_players
         total_cards = sum(len(p.hand) for p in all_players)
-        self.assertGreater(total_cards, 0)
-        self.assertTrue(all(len(p.hand) > 0 for p in all_players))
+        try:
+            self.assertGreater(total_cards, 0)
+            self.assertTrue(all(len(p.hand) > 0 for p in all_players))
+        except Exception as e:
+            self.fail(f"Deal cards to all players check failed: {e}")
 
 if __name__ == "__main__":
     unittest.main()

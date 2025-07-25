@@ -1,20 +1,16 @@
-from cluedo_game.character import Character
+from cluedo_game.cards import SuspectCard
 
 class Player:
     """
     Represents a player (human or AI) in the Cluedo game.
     Tracks hand, position, and elimination status.
     """
-    def __init__(self, character: 'Character', is_human=True):
+    def __init__(self, character: SuspectCard, is_human=True):
         self.character = character
         self.is_human = is_human
         self.hand = []
         self.eliminated = False  # True if player made a false accusation
-
-    def __init__(self, character: Character, is_human=True):
-        self.character = character
-        self.is_human = is_human
-        self.hand = []
+        self._position = None  # Store position directly in Player
 
     @property
     def name(self):
@@ -22,11 +18,11 @@ class Player:
 
     @property
     def position(self):
-        return self.character.position
+        return self._position
 
     @position.setter
     def position(self, value):
-        self.character.position = value
+        self._position = value
 
     def add_card(self, card):
         self.hand.append(card)

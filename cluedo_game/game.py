@@ -1,28 +1,31 @@
 import random
 from cluedo_game.mansion import Mansion
-from cluedo_game.character import get_characters
 from cluedo_game.history import SuggestionHistory
 from cluedo_game.solution import Solution
 from cluedo_game.weapon import get_weapons
+from cluedo_game.cards import SuspectCard, WeaponCard, RoomCard, get_suspects, CHARACTER_STARTING_SPACES
 
 class CluedoGame:
     def __init__(self, input_func=input, output_func=print):
         self.input = input_func
         self.output = output_func
         self.mansion = Mansion()
-        self.characters = get_characters(rooms=self.mansion.get_rooms())
+        self.characters = []
+        for suspect_card in get_suspects():
+            from cluedo_game.player import Player
+            player = Player(suspect_card)
+            player.position = CHARACTER_STARTING_SPACES[suspect_card.name]
+            player.eliminated = False
+            self.characters.append(player)
         self.suggestion_history = SuggestionHistory()
         self.solution = Solution.random_solution()
         self.last_door_passed = {}          # track last room exited via door per player
-        # track elimination status on each character
-        for c in self.characters:
-            c.eliminated = False
         self.player = None
 
     def select_character(self):
         self.output("Select your character:")
-        for idx, char in enumerate(self.characters):
-            self.output(f"  {idx + 1}. {char.name} (starts in {char.position})")
+        for idx, player in enumerate(self.characters):
+            self.output(f"  {idx + 1}. {player.name} (starts in {player.position})")
         while True:
             inp = self.input("Enter number: ").strip()
             try:
@@ -115,12 +118,12 @@ class CluedoGame:
     def deal_cards(self):
         # build deck excluding the three solution cards
         sol = self.solution
-        all_chars = get_characters()
+        all_chars = get_suspects()
         all_weaps = get_weapons()
-        all_rooms = self.mansion.get_rooms()
-        deck = [c for c in all_chars    if c.name != sol.character.name]
-        deck += [w for w in all_weaps   if w.name != sol.weapon.name]
-        deck += [r for r in all_rooms   if r != sol.room]
+        all_rooms = [RoomCard(room.name) for room in self.mansion.get_rooms()]
+        deck = [c for c in all_chars if c != sol.character]
+        deck += [w for w in all_weaps if w != sol.weapon]
+        deck += [r for r in all_rooms if r != sol.room]
         random.shuffle(deck)
         # deal round-robin
         for idx, card in enumerate(deck):
@@ -238,7 +241,7 @@ class CluedoGame:
         self.suggestion_history.add(self.player.name, suspect.name, weapon.name, room, refuter, shown)
         if (suspect.name==self.solution.character.name and
             weapon.name==self.solution.weapon.name and
-            room==self.solution.room):
+            room.name==self.solution.room.name):
             self.output("\nCongratulations! You Win!")
             self.output(f"The solution was: {suspect.name} with the {weapon.name} in the {room.name}.")
             return False
@@ -250,9 +253,7 @@ class CluedoGame:
                 continue
             matches = []
             for card in other.hand:
-                if getattr(card,'name',None)==suspect.name or \
-                   getattr(card,'name',None)==weapon.name or \
-                   card is room:
+                if card == suspect or card == weapon or card == room:
                     matches.append(card)
             if matches:
                 shown = random.choice(matches)
@@ -265,7 +266,7 @@ class CluedoGame:
     def make_accusation(self, suspect, weapon, room):
         if (suspect.name==self.solution.character.name and
             weapon.name==self.solution.weapon.name and
-            room==self.solution.room):
+            room.name==self.solution.room.name):
             self.output("\nCongratulations! You Win!")
             self.output(f"The solution was: {suspect.name} with the {weapon.name} in the {room.name}.")
             self.winner = self.player
@@ -310,3 +311,12 @@ class CluedoGame:
     def print_history(self):
         self.output("\n--- Suggestion/Refute History ---")
         self.output(str(self.suggestion_history) if str(self.suggestion_history) else "No suggestions made yet.")
+
+
+def main():
+    """Command-line entry point for Cluedo game."""
+    game = CluedoGame()
+    game.play()
+
+if __name__ == "__main__":
+    main()

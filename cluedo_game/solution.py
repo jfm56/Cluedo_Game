@@ -2,6 +2,7 @@
 Encapsulate the solution to the murder: one character, one weapon, and one room.
 """
 import random
+from cluedo_game.cards import SuspectCard, WeaponCard, RoomCard
 from cluedo_game.character import get_characters
 from cluedo_game.weapon import get_weapons
 from cluedo_game.mansion import Mansion
@@ -14,14 +15,14 @@ class Solution:
 
     @staticmethod
     def random_solution():
-        character = random.choice(get_characters())
-        weapon = random.choice(get_weapons())
-        room = random.choice(Mansion().get_rooms())
+        character = SuspectCard(random.choice(get_characters()).name)
+        weapon = WeaponCard(random.choice(get_weapons()).name)
+        room = RoomCard(random.choice(Mansion().get_rooms()).name)
         return Solution(character, weapon, room)
 
     def matches(self, character, weapon, room):
-        return (self.character.name == character.name and
-                self.weapon.name == weapon.name and
+        return (self.character == character and
+                self.weapon == weapon and
                 self.room == room)
 
     def __repr__(self):

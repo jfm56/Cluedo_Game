@@ -20,8 +20,11 @@ class TestPlayCluedo(unittest.TestCase):
             capture_output=True,
             timeout=10
         )
-        self.assertIn(b"Welcome to Cluedo", result.stdout)
-        self.assertEqual(result.returncode, 0)
+        try:
+            self.assertIn(b"Welcome to Cluedo", result.stdout)
+            self.assertEqual(result.returncode, 0)
+        except Exception as e:
+            self.fail(f"play_cluedo.py CLI run check failed: {e}")
 
 if __name__ == "__main__":
     unittest.main()

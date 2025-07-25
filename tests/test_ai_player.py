@@ -1,19 +1,17 @@
 import unittest
 from cluedo_game.ai_player import AIPlayer
-from cluedo_game.character import Character
+from cluedo_game.cards import SuspectCard, WeaponCard, RoomCard
 from cluedo_game.mansion import Mansion
-from cluedo_game.weapon import get_weapons
 from cluedo_game.solution import Solution
-from cluedo_game.game import CluedoGame
 
 class DummyGame:
     def __init__(self):
         self.mansion = Mansion()
         self.suggestion_history = DummyHistory()
         self.solution = Solution(
-            Character("Miss Scarlett", "Lounge"),
-            get_weapons()[0],
-            "Lounge"
+            SuspectCard("Miss Scarlett"),
+            WeaponCard("Candlestick"),
+            RoomCard("Lounge")
         )
         self.output_msgs = []
     def handle_refutation(self, character, weapon, room):
@@ -28,25 +26,40 @@ class DummyHistory:
 
 class TestAIPlayer(unittest.TestCase):
     def test_ai_move_and_suggest(self):
-        char = Character("Colonel Mustard", "Dining Room")
+        char = SuspectCard("Colonel Mustard")
         ai = AIPlayer(char)
         game = DummyGame()
-        ai.position = "Dining Room"
+        ai.position = "Dining Room"  # Explicitly set position since it's not set in __init__ anymore
         win = ai.take_turn(game)
-        self.assertIn(ai.position, [r.name for r in game.mansion.get_rooms()])
-        self.assertIn("AI", game.output_msgs[0] or "")
-        self.assertFalse(win or False)  # AI should not win with random suggestion
+        try:
+            self.assertIn(ai.position, [r.name for r in game.mansion.get_rooms()])
+        except Exception as e:
+            self.fail(f"ai.position not in mansion rooms: {e}")
+        try:
+            self.assertIn("AI", game.output_msgs[0] or "")
+        except Exception as e:
+            self.fail(f"'AI' not in output_msgs[0]: {e}")
+        try:
+            self.assertFalse(win or False)  # AI should not win with random suggestion
+        except Exception as e:
+            self.fail(f"AI won unexpectedly: {e}")
 
     def test_ai_make_suggestion_structure(self):
-        char = Character("Professor Plum", "Study")
+        char = SuspectCard("Professor Plum")
         ai = AIPlayer(char)
         class DummyGame2:
             mansion = Mansion()
         suggestion = ai.make_suggestion(DummyGame2())
-        self.assertIn('character', suggestion)
-        self.assertIn('weapon', suggestion)
-        self.assertIn('room', suggestion)
-        self.assertIsInstance(suggestion['character'], Character)
+        try:
+            self.assertIn('character', suggestion)
+            self.assertIn('weapon', suggestion)
+            self.assertIn('room', suggestion)
+        except Exception as e:
+            self.fail(f"Suggestion missing keys: {e}")
+        try:
+            self.assertIsInstance(suggestion['character'], SuspectCard)
+        except Exception as e:
+            self.fail(f"'character' is not a SuspectCard instance: {e}")
 
 if __name__ == "__main__":
     unittest.main()

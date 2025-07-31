@@ -35,6 +35,29 @@ SUSPECTS = [
     SuspectCard("Professor Plum")
 ]
 
+# List of classic Cluedo weapons
+WEAPONS = [
+    WeaponCard("Candlestick"),
+    WeaponCard("Dagger"),
+    WeaponCard("Lead Pipe"),
+    WeaponCard("Revolver"),
+    WeaponCard("Rope"),
+    WeaponCard("Wrench")
+]
+
+# List of classic Cluedo rooms
+ROOMS = [
+    "Kitchen",
+    "Ballroom",
+    "Conservatory",
+    "Billiard Room",
+    "Library",
+    "Study",
+    "Hall",
+    "Lounge",
+    "Dining Room"
+]
+
 # Mapping of character names to starting positions
 CHARACTER_STARTING_SPACES = {
     "Miss Scarlett": "C1",         # bottom left, left of Lounge
@@ -48,6 +71,14 @@ CHARACTER_STARTING_SPACES = {
 def get_suspects():
     """Return a list of all suspect card instances."""
     return SUSPECTS
+
+def get_weapons():
+    """Return a list of all weapon card instances."""
+    return WEAPONS
+
+def get_rooms():
+    """Return a list of all room names."""
+    return ROOMS
 
 def get_suspect_by_name(name):
     """Return a suspect card instance by name, or None if not found."""

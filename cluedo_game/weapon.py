@@ -1,18 +1,43 @@
 """
 Weapon definitions for the Cluedo game.
-Defines each weapon used in the game.
+Defines each weapon used in the game and corresponding cards.
 """
 
 from cluedo_game.cards import WeaponCard
 
-# List of classic Cluedo weapons
+class Weapon:
+    """Represents a physical weapon in the mansion."""
+    
+    def __init__(self, name):
+        """
+        Initialize a weapon.
+        
+        Args:
+            name (str): The name of the weapon
+        """
+        self.name = name
+    
+    def __repr__(self):
+        return f"Weapon({self.name})"
+    
+    def __eq__(self, other):
+        if isinstance(other, Weapon):
+            return self.name == other.name
+        return False
+
+# List of physical weapons in the mansion
 WEAPONS = [
-    WeaponCard("Candlestick"),
-    WeaponCard("Dagger"),
-    WeaponCard("Lead Pipe"),
-    WeaponCard("Revolver"),
-    WeaponCard("Rope"),
-    WeaponCard("Wrench")
+    Weapon("Candlestick"),
+    Weapon("Dagger"),
+    Weapon("Lead Pipe"),
+    Weapon("Revolver"),
+    Weapon("Rope"),
+    Weapon("Wrench")
+]
+
+# Weapon cards corresponding to physical weapons
+WEAPON_CARDS = [
+    WeaponCard(weapon.name) for weapon in WEAPONS
 ]
 
 def get_weapons():

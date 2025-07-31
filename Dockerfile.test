@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["pytest", "tests/test_board_and_movement.py::TestMovement::test_get_optimal_path_adjacent", "tests/test_board_and_movement.py::TestMovement::test_get_optimal_path_multiple_steps", "tests/test_board_and_movement.py::TestMovement::test_get_optimal_path_unreachable", "tests/test_board_and_movement.py::TestMovement::test_get_optimal_path_limited_steps", "-vv"]

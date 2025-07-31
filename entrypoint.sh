@@ -12,7 +12,7 @@ case "$1" in
     exec pylint cluedo_game
     ;;
   ai)
-    exec python -m cluedo_game.game_with_ai
+    exec python play_cluedo.py
     ;;
   *)
     echo "Usage: $0 {game|test|lint|ai}"

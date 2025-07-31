@@ -6,3 +6,15 @@ services:
     stdin_open: true
     tty: true
     command: game
+    volumes:
+      - .:/app
+  
+  # Service for running Python commands
+  python:
+    image: cluedo_game
+    build: .
+    volumes:
+      - .:/app
+    command: sh -c "python -c \"$$PYTHON_COMMAND\""
+    environment:
+      - PYTHON_COMMAND=print('Hello from Python')

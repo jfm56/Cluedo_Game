@@ -38,6 +38,38 @@ class Mansion:
         # C6: right of Study (Professor Plum start)
         # C7–C12: other corridor/intersection spaces, mapped clockwise
         self.corridors = [f"C{i}" for i in range(1, 13)]
+        
+        # Chess-like coordinate system
+        # Map each space (rooms and corridors) to a chess-like coordinate
+        self.chess_coordinates = {
+            # Rooms mapped to their approximate center points
+            "Kitchen": "A1",
+            "Dining Room": "C1",
+            "Lounge": "E1",
+            "Ballroom": "A3",
+            "Billiard Room": "C3",
+            "Hall": "E3",
+            "Conservatory": "A5",
+            "Library": "C5",
+            "Study": "E5",
+            
+            # Corridors mapped to their locations
+            "C1": "E2",  # Miss Scarlett start (left of Lounge)
+            "C2": "C2",  # Colonel Mustard start (below Dining Room)
+            "C3": "A2",  # Mrs. White start (above Kitchen)
+            "C4": "A4",  # Reverend Green start (above Ballroom)
+            "C5": "B5",  # Mrs. Peacock start (above Conservatory)
+            "C6": "F5",  # Professor Plum start (right of Study)
+            "C7": "D2",  # Corridor between Lounge and Hall
+            "C8": "B2",  # Corridor near Dining Room and Kitchen
+            "C9": "B3",  # Corridor near Kitchen and Ballroom
+            "C10": "B4", # Corridor near Ballroom and Conservatory
+            "C11": "C4", # Corridor near Conservatory and Library
+            "C12": "D4"  # Corridor near Library and Study
+        }
+        
+        # Reverse mapping from chess coordinates to spaces
+        self.spaces_by_coordinates = {coord: space for space, coord in self.chess_coordinates.items()}
         # Adjacency map matching board image
         # Helper: room lookup by name
         self.room_lookup = {room.name: room for room in self.rooms}
@@ -86,3 +118,32 @@ class Mansion:
     def get_adjacent_rooms(self, space):
         """Return a list of adjacent rooms (not corridors) for compatibility with legacy code/tests."""
         return [s for s in self.get_adjacent_spaces(space) if s in self.rooms]
+        
+    def get_chess_coordinate(self, space):
+        """Convert a space name or Room object to its chess coordinate (e.g., A1, B2)."""
+        # If it's a Room object, get its name
+        if hasattr(space, 'name'):
+            space = space.name
+        
+        # Return the chess coordinate if it exists, otherwise return the original space name
+        return self.chess_coordinates.get(space, space)
+    
+    def get_space_from_coordinate(self, coordinate):
+        """Convert a chess coordinate (e.g., A1, B2) to its corresponding space name."""
+        # Return the space name if the coordinate exists, otherwise return the original coordinate
+        return self.spaces_by_coordinates.get(coordinate, coordinate)
+    
+    def display_with_chess_coordinates(self):
+        """Return a string representation of the mansion with chess coordinates."""
+        result = "Mansion Board with Chess Coordinates:\n"
+        result += "Rooms:\n"
+        for room in self.rooms:
+            chess_coord = self.get_chess_coordinate(room.name)
+            result += f"  {room.name}: {chess_coord}\n"
+        
+        result += "\nCorridors:\n"
+        for corridor in self.corridors:
+            chess_coord = self.get_chess_coordinate(corridor)
+            result += f"  {corridor}: {chess_coord}\n"
+        
+        return result

@@ -15,6 +15,12 @@ class Player:
     @property
     def name(self):
         return self.character.name
+        
+    @name.setter
+    def name(self, value):
+        # Create a new SuspectCard with the new name
+        from cluedo_game.cards import SuspectCard
+        self.character = SuspectCard(value)
 
     @property
     def position(self):
@@ -23,6 +29,10 @@ class Player:
     @position.setter
     def position(self, value):
         self._position = value
+        
+    @property
+    def is_eliminated(self):
+        return self.eliminated
 
     def add_card(self, card):
         self.hand.append(card)

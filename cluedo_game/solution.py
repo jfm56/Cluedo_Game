@@ -15,9 +15,16 @@ class Solution:
 
     @staticmethod
     def random_solution():
-        character = SuspectCard(random.choice(get_characters()).name)
-        weapon = WeaponCard(random.choice(get_weapons()).name)
-        room = RoomCard(random.choice(Mansion().get_rooms()).name)
+        # Get physical entities first
+        character_obj = random.choice(get_characters())
+        weapon_obj = random.choice(get_weapons())
+        room_name = random.choice(Mansion().get_rooms())
+        
+        # Create cards from those entities
+        character = SuspectCard(character_obj.name)
+        weapon = WeaponCard(weapon_obj.name)
+        room = RoomCard(room_name)
+        
         return Solution(character, weapon, room)
 
     def matches(self, character, weapon, room):

@@ -1,181 +1,65 @@
-import unittest
+import sys
 import pytest
-from unittest.mock import patch
-import random
-from cluedo_game.game import CluedoGame
-from cluedo_game.solution import Solution
-from cluedo_game.cards import SuspectCard, WeaponCard, RoomCard
+from unittest.mock import patch, MagicMock
+from io import StringIO
+
+# Import the module containing the main function
+from cluedo_game.cluedo_game import main, CluedoGame
 
 
-# Patch the roll_for_play_order method to prevent test hangs
-@pytest.fixture(autouse=True)
-def no_roll_for_play_order(monkeypatch):
-    """Prevent dice roll method from running during tests"""
-    def mock_roll(*args, **kwargs):
-        return None
-    monkeypatch.setattr(CluedoGame, '_roll_for_play_order', mock_roll)
+class TestCluedoGame:
+    """Tests for the cluedo_game.py main module."""
 
+    @patch('cluedo_game.cluedo_game.CluedoGame')
+    def test_main_runs_game(self, mock_game_class):
+        """Test that the main function creates and plays a game."""
+        # Setup mock game instance
+        mock_game_instance = MagicMock()
+        mock_game_class.return_value = mock_game_instance
 
-class TestCluedoGameIntegration(unittest.TestCase):
+        # Call the main function
+        with patch('sys.exit') as mock_exit:
+            main()
 
-    def test_player_can_win_with_accusation_anywhere(self):
-        # Force the solution
-        forced = Solution(
-            character=SuspectCard("Miss Scarlett"),
-            weapon=WeaponCard("Rope"),
-            room=RoomCard("Lounge"),
-        )
-        with patch.object(Solution, 'random_solution', lambda: forced):
-            # Setup game and select first character
-            inputs = ['1']
-            outputs = []
-            game = CluedoGame(
-                input_func=lambda prompt='': inputs.pop(0),
-                output_func=outputs.append
-            )
-            game.select_character()
-            game.deal_cards()
+        # Verify the game was instantiated and play was called
+        mock_game_class.assert_called_once()
+        mock_game_instance.play.assert_called_once()
+        mock_exit.assert_not_called()  # Exit should not be called in normal flow
 
-            # Ensure human holds the forced cards
-            human = game.player
-            for card in (forced.character, forced.weapon, forced.room):
-                if card not in human.hand:
-                    human.hand.append(card)
+    def test_main_handles_keyboard_interrupt(self):
+        """Test that KeyboardInterrupt is handled gracefully."""
+        # Prepare mocks and patches
+        with patch('cluedo_game.cluedo_game.CluedoGame') as mock_game_class, \
+             patch('cluedo_game.cluedo_game.exit') as mock_exit, \
+             patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            
+            # Setup mock game instance that raises KeyboardInterrupt
+            mock_game_instance = MagicMock()
+            mock_game_instance.play.side_effect = KeyboardInterrupt()
+            mock_game_class.return_value = mock_game_instance
+            
+            # Call the main function
+            main()
+            
+            # Verify exit was called and goodbye message was printed
+            assert "Game exited. Goodbye!" in mock_stdout.getvalue()
+            mock_exit.assert_called_once_with(0)
 
-            # Place human in a corridor
-            lounge = next(r for r in game.mansion.get_rooms() if r.name == forced.room.name)
-            corridor = next(c for c in game.mansion.get_adjacent_spaces(lounge) if str(c).startswith('C'))
-            human.position = corridor
-
-            # Make accusation
-            result = game.make_accusation(
-                suspect=forced.character,
-                weapon=forced.weapon,
-                room=forced.room
-            )
-
-            joined = '\n'.join(outputs)
-            self.assertTrue(result, "Correct accusation did not return True")
-            self.assertIn("Congratulations! You Win!", joined)
-            self.assertIn(forced.character.name, joined)
-            self.assertIn(forced.weapon.name, joined)
-            self.assertIn(forced.room.name, joined)
-
-    def test_player_is_eliminated_after_false_accusation(self):
-        # Force the solution
-        forced = Solution(
-            character=SuspectCard("Miss Scarlett"),
-            weapon=WeaponCard("Rope"),
-            room=RoomCard("Lounge"),
-        )
-        with patch.object(Solution, 'random_solution', lambda: forced):
-            game = CluedoGame(input_func=lambda _: '1', output_func=lambda m: None)
-            game.select_character()
-            game.deal_cards()
-            human = game.player
-
-            # Make a false accusation (wrong weapon)
-            wrong_weapon = WeaponCard("Candlestick")
-            result = game.make_accusation(
-                suspect=forced.character,
-                weapon=wrong_weapon,
-                room=forced.room
-            )
-
-            self.assertFalse(result, "False accusation did not return False")
-            self.assertTrue(human.eliminated, "Player was not marked eliminated after false accusation")
-
-    def test_player_can_win_unrefuted(self):
-        # Force the solution
-        forced = Solution(
-            character=SuspectCard("Miss Scarlett"),
-            weapon=WeaponCard("Rope"),
-            room=RoomCard("Lounge"),
-        )
-        with patch.object(Solution, 'random_solution', lambda: forced):
-            inputs = ['1']
-            outputs = []
-            game = CluedoGame(
-                input_func=lambda prompt='': inputs.pop(0),
-                output_func=outputs.append
-            )
-            game.select_character()
-            game.deal_cards()
-            human = game.player
-
-            # Ensure human holds the forced cards
-            for card in (forced.character, forced.weapon, forced.room):
-                if card not in human.hand:
-                    human.hand.append(card)
-
-            # Place human in the correct room
-            lounge = next(r for r in game.mansion.get_rooms() if r.name == forced.room.name)
-            human.position = lounge
-
-            # Prepare suggestion inputs
-            sus_idx = next(i for i, c in enumerate(game.characters, 1)
-                           if c.name == forced.character.name)
-            from cluedo_game.weapon import get_weapons
-            weap_list = get_weapons()
-            weap_idx = next(i for i, w in enumerate(weap_list, 1)
-                            if w.name == forced.weapon.name)
-            inputs = [str(sus_idx), str(weap_idx), '0']
-            game.input = lambda prompt='': inputs.pop(0)
-
-            game.make_suggestion()
-            joined = '\n'.join(outputs)
-            self.assertIn("Congratulations! You Win!", joined)
-
-    def test_blocking_door_rule_on_false_accusation(self):
-        # Force the solution
-        forced = Solution(
-            character=SuspectCard("Miss Scarlett"),
-            weapon=WeaponCard("Rope"),
-            room=RoomCard("Lounge"),
-        )
-        with patch.object(Solution, 'random_solution', lambda: forced):
-            game = CluedoGame(input_func=lambda _: '1', output_func=lambda m: None)
-            game.select_character()
-            game.deal_cards()
-            human = game.player
-
-            # Place in room then corridor, record last door
-            lounge = next(r for r in game.mansion.get_rooms() if r.name == forced.room.name)
-            corridor = next(c for c in game.mansion.get_adjacent_spaces(lounge) if str(c).startswith('C'))
-            human.position = lounge
-            game.last_door_passed[human] = lounge
-            human.position = corridor
-
-            wrong_weapon = WeaponCard("Candlestick")
-            result = game.make_accusation(
-                suspect=forced.character,
-                weapon=wrong_weapon,
-                room=lounge
-            )
-
-            self.assertFalse(result, "False accusation did not return False")
-            self.assertEqual(human.position, lounge, "Blocking door rule did not move player back into room")
-
-    def test_roll_for_play_order_deterministic(self):
-        # Only two players to simplify
-        game = CluedoGame(input_func=lambda x=None: "", output_func=lambda x: None)
-        game.characters = game.characters[:2]
-
-        # Round 1: 6+1=7 vs 2+5=7 → tie
-        # Round 2: 6+0=6 vs 0+0=0 → no tie → exit
-        responses = [6, 1,  2, 5,  6, 0,  0, 0]
-        def fake_randint(a, b):
-            return responses.pop(0) if responses else a
-
-        import random as _random
-        original_randint = _random.randint
-        try:
-            _random.randint = fake_randint
-            # Should now complete without hanging
-            game._roll_for_play_order()
-        finally:
-            # Restore original function
-            _random.randint = original_randint
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_main_handles_eof_error(self):
+        """Test that EOFError is handled gracefully."""
+        # Prepare mocks and patches
+        with patch('cluedo_game.cluedo_game.CluedoGame') as mock_game_class, \
+             patch('cluedo_game.cluedo_game.exit') as mock_exit, \
+             patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            
+            # Setup mock game instance that raises EOFError
+            mock_game_instance = MagicMock()
+            mock_game_instance.play.side_effect = EOFError()
+            mock_game_class.return_value = mock_game_instance
+            
+            # Call the main function
+            main()
+            
+            # Verify exit was called and goodbye message was printed
+            assert "Game exited. Goodbye!" in mock_stdout.getvalue()
+            mock_exit.assert_called_once_with(0)

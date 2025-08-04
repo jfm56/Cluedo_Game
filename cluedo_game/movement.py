@@ -2,8 +2,12 @@
 Movement module for the Cluedo game.
 Handles movement logic for both human and AI players using BFS algorithm.
 """
+import logging
 from collections import deque
 from typing import List, Dict, Any, Set, Tuple, Union, Optional
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class Movement:
@@ -48,6 +52,18 @@ class Movement:
                 (from_room in ['Conservatory', 'Lounge'] and to_room in ['Conservatory', 'Lounge']))
 
     def get_destinations_from(self, start_position: Union[str, Any], steps: int) -> List[str]:
+        """
+        Get all possible destinations from the given position within the given number of steps.
+        
+        Args:
+            start_position: Starting position (room name or corridor ID)
+            steps: Maximum number of steps allowed
+            
+        Returns:
+            List of reachable positions
+        """
+        # Log the movement query
+        logger.debug(f"Getting destinations from {start_position} within {steps} steps")
         """
         Find all possible destinations that can be reached from a starting position 
         within a given number of steps using BFS (Breadth-First Search).

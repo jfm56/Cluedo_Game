@@ -29,9 +29,17 @@ from .win_conditions import WinConditionChecker
 
 # Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO,  # Changed from DEBUG to INFO to reduce noise
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('cluedo_game.log')
+    ]
 )
+# Set specific loggers to INFO level to see AI moves
+logging.getLogger('cluedo_game.game.actions').setLevel(logging.INFO)
+logging.getLogger('cluedo_game.game.ai_controller').setLevel(logging.INFO)
+logging.getLogger('cluedo_game.movement').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 class CluedoGame:
@@ -110,15 +118,22 @@ class CluedoGame:
         Returns:
             bool: True if the game should end, False otherwise
         """
+        # Reset turn-specific flags
+        self._suggestion_made = False
+        self._moved_this_turn = False
+        
         while True:  # Main turn loop to handle multiple actions
             self.output(f"\n=== {self.player.name}'s Turn ===")
             
             # Show available actions
-            actions = ["Move", "View Suggestion History", "End Turn"]
+            actions = ["Move", "Make Suggestion", "Make Accusation", "View Suggestion History", "End Turn"]
+            if self._moved_this_turn:
+                actions.remove("Move")  # Remove Move option if already moved this turn
+                
             self.output("\nWhat would you like to do?")
             for i, action in enumerate(actions, 1):
                 self.output(f"{i}. {action}")
-                
+            
             # Get player's choice
             while True:
                 try:
@@ -130,32 +145,45 @@ class CluedoGame:
                     self.output("Please enter a valid number.")
             
             # Handle the chosen action
-            if actions[choice] == "Move":
-                # Reset turn-specific flags
-                self._suggestion_made = False
-                
+            if actions[choice] == "Move" and not self._moved_this_turn:
                 # Move phase
                 self.move_phase()
+                self._moved_this_turn = True
                 
                 # If player is in a room and hasn't made a suggestion yet, they can make a suggestion
                 in_room = not str(self.player.position).startswith('C')
                 if in_room and not getattr(self, '_suggestion_made', False):
                     if self.suggestion_phase():
                         return True  # Game over
-                
-                # After moving, prompt for accusation
-                if hasattr(self, 'prompt_accusation'):
-                    if self.prompt_accusation():
+            
+            elif actions[choice] == "Make Suggestion":
+                in_room = not str(self.player.position).startswith('C')
+                if in_room:
+                    if self.suggestion_phase():
                         return True  # Game over
+                else:
+                    self.output("You can only make a suggestion when in a room.")
+                    input("Press Enter to continue...")
+            
+            elif actions[choice] == "Make Accusation":
+                if self.prompt_accusation():
+                    return True  # Game over
             
             elif actions[choice] == "View Suggestion History":
                 self.show_suggestion_history()
                 input("\nPress Enter to continue...")
-                continue  # Show menu again
                 
             elif actions[choice] == "End Turn":
+                # Check if player has taken any action this turn
+                if not self._moved_this_turn and not self._suggestion_made:
+                    confirm = input("You haven't taken any actions this turn. Are you sure you want to end your turn? (y/n): ").strip().lower()
+                    if confirm != 'y':
+                        continue
                 break  # End the player's turn
         
+        # Reset turn flags
+        self._suggestion_made = False
+        self._moved_this_turn = False
         return False  # Continue game
         
     def move_phase(self) -> None:
@@ -168,20 +196,57 @@ class CluedoGame:
             self.output("No valid moves from current position.")
             return
             
-        # Display destinations
-        self.output("\nWhere would you like to move?")
-        for i, dest in enumerate(destinations, 1):
-            self.output(f"{i}. {dest}")
+        # Group destinations by type (corridors and rooms)
+        corridors = [d for d in destinations if d.startswith('C')]
+        rooms = [d for d in destinations if not d.startswith('C')]
+        
+        # Display destinations in a more organized way
+        self.output("\nAvailable destinations:")
+        
+        # Display rooms first
+        if rooms:
+            self.output("\nRooms:")
+            for i, room in enumerate(rooms, 1):
+                self.output(f"{i}. {room}")
+        
+        # Then display corridors
+        if corridors:
+            self.output("\nCorridors:")
+            for i, corridor in enumerate(corridors, len(rooms) + 1):
+                self.output(f"{i}. {corridor}")
+                
+        # Create a combined list for selection
+        all_destinations = rooms + corridors
             
         # Get player's choice
         while True:
             try:
-                choice = int(self.input("Enter your choice: ")) - 1
+                choice_input = self.input("Enter your choice (or 'h' for history): ").strip().lower()
+                
+                # Check for history command
+                if choice_input == 'h':
+                    self.show_suggestion_history()
+                    input("\nPress Enter to continue...")
+                    
+                    # Redisplay destinations
+                    self.output("\nAvailable destinations:")
+                    if rooms:
+                        self.output("\nRooms:")
+                        for i, room in enumerate(rooms, 1):
+                            self.output(f"{i}. {room}")
+                    if corridors:
+                        self.output("\nCorridors:")
+                        for i, corridor in enumerate(corridors, len(rooms) + 1):
+                            self.output(f"{i}. {corridor}")
+                    continue
+                
+                # Process numeric choice
+                choice = int(choice_input) - 1
                 if 0 <= choice < len(destinations):
                     break
-                self.output("Invalid choice. Please try again.")
+                self.output(f"Please enter a number between 1 and {len(destinations)}.")
             except ValueError:
-                self.output("Please enter a number.")
+                self.output("Please enter a valid number or 'h' for history.")
                 
         # Move player and return the new position
         new_pos = destinations[choice]
@@ -201,33 +266,36 @@ class CluedoGame:
         # Default choice in case something goes wrong
         choice = 'n'
         
-        try:
-            # First, check if we have a callable input method
-            if hasattr(self, 'input') and callable(self.input):
-                print("DEBUG: Has callable input method")  # Debug print
-                
-                # For testing with MagicMock, we need to check if it has a return_value
-                if hasattr(self.input, 'return_value'):
-                    print("DEBUG: Input has return_value attribute")  # Debug print
-                    print(f"DEBUG: self.input.return_value = {self.input.return_value}")
-                    choice = self.input.return_value
-                    print(f"DEBUG: Got choice from return_value: {choice}")  # Debug print
+        while True:  # Loop to handle history view and retries
+            try:
+                # First, check if we have a callable input method
+                if hasattr(self, 'input') and callable(self.input):
+                    # For testing with MagicMock, we need to check if it has a return_value
+                    if hasattr(self.input, 'return_value'):
+                        choice = self.input.return_value
+                    else:
+                        # For normal operation, call the input function with the prompt
+                        prompt = "\nWould you like to make a suggestion? (y/n/board/history): "
+                        try:
+                            choice = self.input(prompt).strip().lower()
+                            
+                            # Handle history command
+                            if choice == 'history':
+                                self.show_suggestion_history()
+                                input("\nPress Enter to continue...")
+                                continue  # Show the prompt again
+                                
+                        except Exception as e:
+                            print(f"Error getting input: {e}")
+                            choice = 'n'  # Default to 'no' if there's an error
                 else:
-                    # For normal operation, call the input function with the prompt
-                    print("DEBUG: Calling input function with prompt")  # Debug print
-                    prompt = "\nWould you like to make a suggestion? (y/n/board): "
-                    try:
-                        choice = self.input(prompt).strip().lower()
-                        print(f"DEBUG: Got choice from input call: {choice}")  # Debug print
-                    except Exception as e:
-                        print(f"DEBUG: Error calling input: {e}")  # Debug print
-                        choice = 'n'  # Default to 'no' if there's an error
-            else:
-                print("DEBUG: No callable input method found")  # Debug print
-                choice = 'n'  # Default to 'no' if no input method is available
-        except Exception as e:
-            print(f"DEBUG: Unexpected error in suggestion_phase: {e}")
-            choice = 'n'  # Default to 'no' on any error
+                    choice = 'n'  # Default to 'no' if no input method is available
+                break  # Exit the loop if we got a valid choice
+                    
+            except Exception as e:
+                print(f"Unexpected error in suggestion_phase: {e}")
+                choice = 'n'  # Default to 'no' on any error
+                break
         
         print(f"DEBUG: Processing choice: {choice}")  # Debug print
         
@@ -375,16 +443,68 @@ class CluedoGame:
         Returns:
             bool: True if the accusation was correct (game over), False otherwise
         """
+        self.output("\n=== Make an Accusation ===")
+        self.output("You are about to make an accusation. Be careful - if you're wrong, you're out of the game!")
+        
+        # Get list of suspects, weapons, and rooms
+        suspects = [s.name for s in get_suspects()]
+        weapons = [w.name for w in get_weapons()]
+        rooms = [r.name for r in get_rooms()]
+        
+        # Let player select each component of the accusation
+        self.output("\nSelect the suspect you think did it:")
+        for i, suspect in enumerate(suspects, 1):
+            self.output(f"{i}. {suspect}")
+            
         while True:
-            choice = self.input("\nWould you like to make an accusation? (y/n): ").strip().lower()
-            if choice == 'y':
-                # In a real implementation, this would handle the accusation logic
-                self.output("Making accusation...")
-                return False  # For now, always return False to continue the game
-            elif choice == 'n':
-                return False
-            else:
-                self.output("Please enter 'y' or 'n'.")
+            try:
+                suspect_choice = int(self.input("Enter suspect number: ")) - 1
+                if 0 <= suspect_choice < len(suspects):
+                    break
+                self.output(f"Please enter a number between 1 and {len(suspects)}")
+            except ValueError:
+                self.output("Please enter a valid number.")
+        
+        self.output("\nSelect the weapon you think was used:")
+        for i, weapon in enumerate(weapons, 1):
+            self.output(f"{i}. {weapon}")
+            
+        while True:
+            try:
+                weapon_choice = int(self.input("Enter weapon number: ")) - 1
+                if 0 <= weapon_choice < len(weapons):
+                    break
+                self.output(f"Please enter a number between 1 and {len(weapons)}")
+            except ValueError:
+                self.output("Please enter a valid number.")
+        
+        self.output("\nSelect the room where it happened:")
+        for i, room in enumerate(rooms, 1):
+            self.output(f"{i}. {room}")
+            
+        while True:
+            try:
+                room_choice = int(self.input("Enter room number: ")) - 1
+                if 0 <= room_choice < len(rooms):
+                    break
+                self.output(f"Please enter a number between 1 and {len(rooms)}")
+            except ValueError:
+                self.output("Please enter a valid number.")
+        
+        # Confirm the accusation
+        suspect = suspects[suspect_choice]
+        weapon = weapons[weapon_choice]
+        room = rooms[room_choice]
+        
+        self.output(f"\nYou are accusing: {suspect} with the {weapon} in the {room}")
+        confirm = self.input("Are you sure? (y/n): ").strip().lower()
+        
+        if confirm == 'y':
+            # Process the accusation
+            return self.make_accusation(self.player, suspect, weapon, room)
+        else:
+            self.output("Accusation cancelled.")
+            return False
     
     def is_ai_mode(self) -> bool:
         """Check if the game is in AI mode."""

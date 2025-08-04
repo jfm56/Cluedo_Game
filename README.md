@@ -125,6 +125,45 @@ This will run all unit and integration tests using `pytest` inside Docker. You s
 - To play against these AI opponents, use the `game_with_ai` module as described above.
 - The AI logic is currently random, but the system is extensible for smarter strategies.
 
+---
+
+## Game Design and Algorithms
+
+### 1. Board Representation and Movement
+- **Graph-based Board**: The game board is represented as a graph where each node is a room or corridor space, and edges represent valid moves between them. This allows for efficient pathfinding and movement validation.
+- **Chess-like Coordinate System**: Implements an A1-J10 coordinate system for intuitive position tracking and movement calculations.
+- **Pathfinding**: Uses breadth-first search (BFS) to calculate valid moves and shortest paths between locations, ensuring players can only move to adjacent spaces.
+
+### 2. Card Dealing and Solution Generation
+- **Fair Distribution**: Cards are dealt using a Fisher-Yates shuffle algorithm to ensure random but fair distribution among players.
+- **Solution Generation**: The solution (character, weapon, room) is selected at random at the start of each game, with the selected cards removed from the deck before dealing to players.
+- **No Duplicate Cards**: The dealing mechanism ensures no player receives a card that's part of the solution, maintaining game integrity.
+
+### 3. AI Opponents
+- **Random Move Selection**: AI players use weighted random selection for movement, with preferences for moving toward rooms when making suggestions.
+- **Suggestion Strategy**: AI players track known information and make suggestions based on their current room and remaining possibilities.
+- **Deduction**: AI players maintain a knowledge base of seen cards and use process of elimination to make educated guesses.
+
+### 4. Game State Management
+- **Turn Management**: Implements a circular queue for turn order, supporting both human and AI players seamlessly.
+- **Suggestion Resolution**: Efficiently resolves suggestions by checking all players' hands in turn order until a refutation is found.
+- **Win Condition Checking**: Validates accusations against the solution with O(1) complexity for quick resolution.
+
+### 5. Data Structures
+- **Sets for Efficient Lookups**: Uses Python sets for O(1) membership testing of cards in player hands and solution sets.
+- **Dictionaries for State Tracking**: Maintains game state using dictionaries for quick access to player positions, cards, and game history.
+- **Immutable Data**: Uses tuples and frozen sets where appropriate to ensure data consistency and prevent accidental modifications.
+
+### 6. Input Validation
+- **Type Checking**: Validates all user inputs to ensure they match expected types and formats.
+- **Range Validation**: Ensures all numerical inputs are within valid ranges for the current game state.
+- **Command Parsing**: Implements a flexible command parser that supports both menu-based and natural language inputs.
+
+### 7. Performance Considerations
+- **Lazy Evaluation**: Defers expensive calculations until necessary, such as pathfinding only when a player moves.
+- **Memoization**: Caches results of expensive operations like path calculations to improve performance.
+- **Efficient Updates**: Uses incremental updates to the game state rather than recalculating from scratch when possible.
+
 ## Contributing
 
 Enjoy playing Cluedo! If you have suggestions or want to contribute, feel free to open an issue or pull request.

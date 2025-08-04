@@ -27,13 +27,14 @@ def setup_ai_players(game):
     # Randomly select one AI player to be the human player (for compatibility)
     human_suspect = random.choice(suspects)
     game.player = game.player_manager.characters[[c.name for c in game.player_manager.characters].index(human_suspect.name)]
-    game.player.is_ai = False
+    game.player.is_human = True  # Mark as human player
     
     # Set up the rest as AI players
+    game.ai_players = []
     for suspect in suspects:
         if suspect.name != human_suspect.name:
             ai_player = game.player_manager.characters[[c.name for c in game.player_manager.characters].index(suspect.name)]
-            ai_player.is_ai = True
+            ai_player.is_human = False  # Mark as AI player
             game.ai_players.append(ai_player)
     
     # Deal cards to all players
@@ -42,7 +43,7 @@ def setup_ai_players(game):
     # Log the setup
     print(f"Game set up with {len(game.ai_players)} AI players")
     for i, player in enumerate(game.get_all_players()):
-        print(f"  Player {i+1}: {player.name} (AI: {hasattr(player, 'is_ai') and player.is_ai})")
+        print(f"  Player {i+1}: {player.name} (Human: {player.is_human})")
 
 def main():
     try:

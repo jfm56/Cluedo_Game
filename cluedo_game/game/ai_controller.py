@@ -4,11 +4,15 @@ AI controller for the Cluedo game.
 This module handles AI player behavior and decision making.
 """
 import random
+import logging
 from typing import List, Optional, Dict, Any, Tuple
 
 from cluedo_game.ai import NashAIPlayer
 from cluedo_game.player import Player
 from cluedo_game.cards import Card, SuspectCard, WeaponCard, RoomCard
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class AIController:
     """Manages AI players and their decision making."""
@@ -34,20 +38,26 @@ class AIController:
             The chosen destination
         """
         # Get available moves
-        destinations = self.game.movement.get_destinations_from(ai_player.position, steps)
+        current_pos = ai_player.position
+        destinations = self.game.movement.get_destinations_from(current_pos, steps)
         
         if not destinations:
-            return ai_player.position  # Stay in place if no valid moves
+            logger.info(f"{ai_player.name} has no valid moves from {current_pos}")
+            return current_pos  # Stay in place if no valid moves
         
         # Simple AI: prefer rooms over corridors
         room_destinations = [d for d in destinations if not str(d).startswith('C')]
         
         if room_destinations:
             # Choose a random room
-            return random.choice(room_destinations)
+            destination = random.choice(room_destinations)
+            logger.info(f"{ai_player.name} moving from {current_pos} to room {destination}")
+            return destination
         else:
             # Choose a random corridor
-            return random.choice(destinations)
+            destination = random.choice(destinations)
+            logger.info(f"{ai_player.name} moving from {current_pos} to corridor {destination}")
+            return destination
     
     def get_ai_suggestion(self, ai_player: NashAIPlayer) -> Tuple[str, str, str]:
         """

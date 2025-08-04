@@ -119,13 +119,38 @@ class GameUI:
         """Display that no one could refute a suggestion."""
         self.output("No one could refute the suggestion.")
     
-    def get_player_choice(self, prompt: str, options: List[str]) -> str:
+    def get_user_input(self, prompt: str = "", ai_player=None) -> str:
+        """
+        Get input from the user or AI player.
+        
+        Args:
+            prompt: The prompt to display to the user
+            ai_player: The AI player if this is an AI turn, None otherwise
+            
+        Returns:
+            The input as a string
+        """
+        if ai_player is not None:
+            # For AI players, automatically select the first option or press Enter
+            if "Choose destination" in prompt:
+                return "1"  # Choose first destination
+            elif "Choose suspect" in prompt:
+                return "1"  # Choose first suspect
+            elif "Choose weapon" in prompt:
+                return "1"  # Choose first weapon
+            elif "Make a suggestion?" in prompt or "end your turn?" in prompt:
+                return "n"  # Default to no for yes/no questions
+            return ""  # Default to empty string for other inputs
+        return self.input(f"\n{prompt}:")
+    
+    def get_player_choice(self, prompt: str, options: List[str], ai_player=None) -> str:
         """
         Get a choice from the player.
         
         Args:
             prompt: The prompt to display
             options: List of available options
+            ai_player: The AI player if this is an AI turn, None otherwise
             
         Returns:
             The player's chosen option
@@ -135,7 +160,7 @@ class GameUI:
             self.output(f"{i}. {option}")
         
         while True:
-            choice = self.input("Enter your choice: ").strip()
+            choice = self.get_user_input("Enter your choice: ", ai_player).strip()
             try:
                 idx = int(choice) - 1
                 if 0 <= idx < len(options):

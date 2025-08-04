@@ -3,6 +3,7 @@ Player actions for the Cluedo game.
 
 This module handles player actions like movement, suggestions, and accusations.
 """
+import random
 from typing import Dict, List, Optional, Any, Tuple
 
 from cluedo_game.player import Player
@@ -41,15 +42,32 @@ class ActionHandler:
             self.game.output(f"{player.name} has no valid moves from {current_pos}.")
             return
         
-        # Let player choose destination
-        if player.is_human:
-            dest = self._get_human_destination_choice(destinations)
-        else:
+        # For AI players, automatically choose a destination
+        if not player.is_human:
             # AI player chooses destination
             dest = self._get_ai_destination_choice(player, destinations)
-        
-        if dest:
-            self._move_player(player, dest)
+            if dest:
+                self._move_player(player, dest)
+            return
+            
+        # Human player chooses destination
+        self.game.output("\nAvailable destinations:")
+        for i, dest in enumerate(destinations, 1):
+            self.game.output(f"{i}. {dest}")
+            
+        while True:
+            choice = self.game.input("Choose destination (or press Enter to skip): ").strip()
+            if not choice:
+                return
+                
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(destinations):
+                    self._move_player(player, destinations[idx])
+                    return
+                self.game.output(f"Please enter a number between 1 and {len(destinations)}.")
+            except ValueError:
+                self.game.output("Please enter a valid number.")
     
     def _get_human_destination_choice(self, destinations: List[str]) -> Optional[str]:
         """Get destination choice from human player."""
@@ -70,10 +88,33 @@ class ActionHandler:
                 self.game.output("Please enter a valid number.")
     
     def _get_ai_destination_choice(self, ai_player: Player, destinations: List[str]) -> Optional[str]:
-        """Get destination choice from AI player."""
-        # Simple AI: choose the first available destination
-        # This can be enhanced with more sophisticated AI logic
-        return destinations[0] if destinations else None
+        """
+        Get destination choice from AI player.
+        
+        Args:
+            ai_player: The AI player making the choice
+            destinations: List of available destinations
+            
+        Returns:
+            The chosen destination, or None if no valid choice
+        """
+        if not destinations:
+            return None
+            
+        # Prefer rooms over corridors
+        rooms = [d for d in destinations if not str(d).startswith('C')]
+        if rooms:
+            # If we can reach a room, choose one at random
+            import random
+            destination = random.choice(rooms)
+            self.game.output(f"{ai_player.name} chooses to move to {destination}")
+            return destination
+            
+        # Otherwise, choose a random corridor
+        import random
+        destination = random.choice(destinations)
+        self.game.output(f"{ai_player.name} moves to corridor {destination}")
+        return destination
     
     def _move_player(self, player: Player, destination: str) -> None:
         """

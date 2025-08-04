@@ -76,6 +76,14 @@ class Mansion:
         # Reverse mapping from chess coordinates to spaces
         self.spaces_by_coordinates = {coord: space for space, coord in self.chess_coordinates.items()}
         
+        # Secret passages connect specific rooms diagonally across the board
+        self.secret_passages = {
+            self.room_lookup["Kitchen"]: self.room_lookup["Study"],
+            self.room_lookup["Study"]: self.room_lookup["Kitchen"],
+            self.room_lookup["Conservatory"]: self.room_lookup["Lounge"],
+            self.room_lookup["Lounge"]: self.room_lookup["Conservatory"]
+        }
+        
         # Adjacency map matching board image
         self.adjacency = {
             # Corridors (outer edge, starting positions)
@@ -139,13 +147,40 @@ class Mansion:
         """Return a list of all spaces (rooms + corridors)."""
         return self.rooms + self.corridors
 
-    def get_adjacent_spaces(self, space):
-        """Return a list of spaces adjacent to the given space (room or corridor)."""
-        return self.adjacency.get(space, [])
+    def get_adjacent_spaces(self, space, include_secret_passages=False):
+        """
+        Return a list of spaces adjacent to the given space (room or corridor).
+        
+        Args:
+            space: The space (room or corridor) to get adjacent spaces for
+            include_secret_passages: If True, includes secret passages in the result
+                                    (default is False for normal movement)
+        """
+        # Get normal adjacency (corridors for rooms, rooms/corridors for corridors)
+        adjacent = self.adjacency.get(space, []).copy()
+        
+        # Add secret passage if this room has one and they're enabled
+        if include_secret_passages and space in self.secret_passages:
+            adjacent.append(self.secret_passages[space])
+            
+        return adjacent
 
     def get_adjacent_rooms(self, space):
-        """Return a list of adjacent rooms (not corridors) for compatibility with legacy code/tests."""
-        return [s for s in self.get_adjacent_spaces(space) if s in self.rooms]
+        """
+        Return a list of adjacent rooms (not corridors) for the given space.
+        
+        Args:
+            space: The space (room or corridor) to get adjacent rooms for
+            
+        Returns:
+            List[Room]: List of adjacent rooms (empty list if none)
+        """
+        # For rooms, they should only be adjacent to corridors, not other rooms
+        if space in self.rooms:
+            return []
+            
+        # For corridors, return adjacent rooms (not other corridors)
+        return [s for s in self.adjacency.get(space, []) if s in self.rooms]
         
     def get_chess_coordinate(self, space):
         """Convert a space name or Room object to its chess coordinate (e.g., A1, B2).
@@ -253,6 +288,46 @@ class Mansion:
         # If not found, return the original coordinate
         return coordinate
     
+    def display_with_chess_coordinates(self):
+        """Return a string representation of the mansion with chess coordinates and secret passages."""
+        output = []
+        output.append("Mansion Layout with Chess Coordinates:")
+        output.append("=" * 50)
+        
+        # Add rooms section
+        output.append("\nRooms:")
+        rooms_with_coords = [(room.name, self.chess_coordinates[room.name]) 
+                           for room in self.rooms 
+                           if room.name in self.chess_coordinates]
+        
+        # Sort by coordinate (A1, A3, A5, C1, etc.)
+        rooms_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))
+        
+        for name, coord in rooms_with_coords:
+            room = self.room_lookup[name]
+            secret_passage = self.secret_passages.get(room)
+            passage_info = f" (Secret passage to {secret_passage.name})" if secret_passage else ""
+            output.append(f"- {name}: {coord}{passage_info}")
+        
+        # Add corridors section
+        output.append("\nCorridors:")
+        corridors_with_coords = [(f"C{i}", self.chess_coordinates[f"C{i}"]) 
+                               for i in range(1, 13) 
+                               if f"C{i}" in self.chess_coordinates]
+        
+        # Sort by coordinate
+        corridors_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))
+        
+        for name, coord in corridors_with_coords:
+            output.append(f"- {name}: {coord}")
+            
+        # Add secret passages legend
+        output.append("\nSecret Passages:")
+        output.append("Kitchen <-> Study")
+        output.append("Conservatory <-> Lounge")
+        
+        return "\n".join(output)
+
     def display_chess_coordinates(self):
         """Display all rooms and corridors with their chess coordinates.
         
@@ -275,18 +350,3 @@ class Mansion:
         for corridor in sorted(self.corridors):
             coord = self.get_chess_coordinate(corridor)
             print(f"  {corridor} ({coord})")
-    
-    def display_with_chess_coordinates(self):
-        """Return a string representation of the mansion with chess coordinates."""
-        result = "Mansion Board with Chess Coordinates:\n"
-        result += "Rooms:\n"
-        for room in self.rooms:
-            chess_coord = self.get_chess_coordinate(room.name)
-            result += f"  {room.name}: {chess_coord}\n"
-        
-        result += "\nCorridors:\n"
-        for corridor in self.corridors:
-            chess_coord = self.get_chess_coordinate(corridor)
-            result += f"  {corridor}: {chess_coord}\n"
-        
-        return result

@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 
 # Import required classes
 from cluedo_game.game import CluedoGame
-from cluedo_game.game.core import create_solution
+from cluedo_game.solution import create_solution
 from cluedo_game.game.game_loop import GameLoop
 from cluedo_game.game.player_management import PlayerManager
 from cluedo_game.cards import get_suspects, CHARACTER_STARTING_SPACES

@@ -49,14 +49,28 @@ class PlayerManager:
         Returns:
             List of all active Player objects
         """
-        # Combine human player (if exists) and AI players
+        # First, make sure we have players initialized
+        if not self._characters and not self.ai_players and not self.player:
+            self._initialize_characters()
+            
+        # If we have a human player, include them
         all_players = []
         if self.player is not None:
             all_players.append(self.player)
+            
+        # Add AI players
         all_players.extend(self.ai_players)
         
+        # If we still have no players, use the base characters
+        if not all_players and self._characters:
+            all_players = self._characters
+            
         # Filter out eliminated players
-        return [p for p in all_players if not getattr(p, 'eliminated', False)]
+        active_players = [p for p in all_players if not getattr(p, 'eliminated', False)]
+        
+        # Debug information
+        self.game.logger.debug(f"Active players: {[p.name for p in active_players]}")
+        return active_players
     
     def _initialize_characters(self) -> None:
         """Initialize all playable characters from suspect cards."""

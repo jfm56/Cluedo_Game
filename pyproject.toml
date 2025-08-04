@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cluedo_game"
+version = "0.1.0"
+description = "A Python implementation of the classic Cluedo board game"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Jim Mullen", email = "jim.mullen@example.com"}
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "pylint>=2.0",
+    "mypy>=0.900"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+
+[tool.coverage.run]
+source = ["cluedo_game"]
+omit = [
+    "cluedo_game/__init__.py",
+    "**/__pycache__/*"
+]

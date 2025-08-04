@@ -3,7 +3,7 @@ Movement module for the Cluedo game.
 Handles movement logic for both human and AI players using BFS algorithm.
 """
 from collections import deque
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set, Tuple, Union, Optional
 
 
 class Movement:
@@ -15,8 +15,39 @@ class Movement:
             mansion: The Mansion object containing rooms, corridors, and adjacency map
         """
         self.mansion = mansion
+        self._secret_passage_rooms = {
+            'Kitchen', 'Study', 'Conservatory', 'Lounge'
+        }
 
-    def get_destinations_from(self, start_position, steps):
+    def _is_secret_passage_move(self, from_pos, to_pos):
+        """
+        Check if moving from one position to another uses a secret passage.
+        
+        Args:
+            from_pos: Starting position (Room or corridor)
+            to_pos: Destination position (Room or corridor)
+            
+        Returns:
+            bool: True if this move uses a secret passage, False otherwise
+        """
+        # If either position is a corridor, it's not a secret passage move
+        if (isinstance(from_pos, str) and from_pos.startswith('C')) or \
+           (isinstance(to_pos, str) and to_pos.startswith('C')):
+            return False
+            
+        # If either position isn't a room (after checking for corridors), it's not a secret passage
+        if not hasattr(from_pos, 'name') or not hasattr(to_pos, 'name'):
+            return False
+            
+        # Get room names
+        from_room = from_pos.name
+        to_room = to_pos.name
+        
+        # Check for secret passage pairs
+        return ((from_room in ['Kitchen', 'Study'] and to_room in ['Kitchen', 'Study']) or
+                (from_room in ['Conservatory', 'Lounge'] and to_room in ['Conservatory', 'Lounge']))
+
+    def get_destinations_from(self, start_position: Union[str, Any], steps: int) -> List[str]:
         """
         Find all possible destinations that can be reached from a starting position 
         within a given number of steps using BFS (Breadth-First Search).
@@ -28,83 +59,76 @@ class Movement:
         Returns:
             A list of possible destination spaces sorted alphabetically
         """
-        # Handle invalid input
         if steps <= 0:
             return []
             
-        # Convert rooms to Room objects if they're string names
+        # Convert string room names to Room objects
         if isinstance(start_position, str) and not start_position.startswith('C'):
             for room in self.mansion.rooms:
                 if room.name == start_position:
                     start_position = room
                     break
         
-        # Track visited positions with their distances
-        visited = {}
-        queue = deque([(start_position, 0)])  # (position, distance)
-        reachable = set()
+        # Track visited positions with their distances and secret passage usage
+        visited = {}  # (position_key, used_secret_passage) -> distance
+        queue = deque([(start_position, 0, False)])  # (position, distance, used_secret_passage)
+        reachable = set()  # (position_key, used_secret_passage)
         
-        def get_position_key(pos):
+        def get_position_key(pos) -> str:
             """Helper to get a consistent key for any position type."""
-            if isinstance(pos, str):
-                return pos
-            return getattr(pos, 'name', str(pos))
+            return pos if isinstance(pos, str) else getattr(pos, 'name', str(pos))
             
-        # Get the starting position key
         start_key = get_position_key(start_position)
-        visited[start_key] = 0
+        visited[(start_key, False)] = 0
         
-        print(f"Starting BFS from {start_key} with {steps} steps")  # Debug print
-            
         while queue:
-            pos, dist = queue.popleft()
+            pos, dist, used_secret_passage = queue.popleft()
             pos_key = get_position_key(pos)
-            print(f"  Processing: {pos_key} at distance {dist}")  # Debug print
             
             # Add as a valid destination if it's not the starting position
             if dist > 0:
-                reachable.add(pos_key)
-                print(f"    Added to reachable: {pos_key}")  # Debug print
+                reachable.add((pos_key, used_secret_passage))
             
             # Don't explore beyond the current position if we've used all steps
             if dist >= steps:
-                print(f"    Reached max steps for {pos_key}")  # Debug print
                 continue
                 
             # Explore adjacent spaces
-            adjacents = self.mansion.get_adjacent_spaces(pos)
-            print(f"    Adjacent to {pos_key}: {[get_position_key(a) for a in adjacents]}")  # Debug print
-            
-            for adj in adjacents:
+            for adj in self.mansion.get_adjacent_spaces(pos):
                 adj_key = get_position_key(adj)
                 
-                # Skip if already visited with same or fewer steps
-                if adj_key in visited and visited[adj_key] <= dist + 1:
-                    print(f"      Already visited {adj_key} with distance <= {dist + 1}")  # Debug print
+                # Check if this move uses a secret passage
+                is_secret_passage = self._is_secret_passage_move(pos, adj)
+                
+                # If we've already used a secret passage and this is another one, skip it
+                new_used_secret_passage = used_secret_passage or is_secret_passage
+                
+                # Skip if already visited with same or fewer steps and same or better secret passage usage
+                if (adj_key, new_used_secret_passage) in visited and \
+                   visited[(adj_key, new_used_secret_passage)] <= dist + 1:
                     continue
                     
-                visited[adj_key] = dist + 1
-                queue.append((adj, dist + 1))
-                print(f"      Added {adj_key} to queue with distance {dist + 1}")  # Debug print
+                # All moves cost 1 step
+                new_dist = dist + 1
                 
-        print(f"Final reachable destinations: {sorted(reachable)}")  # Debug print
-        # Sort destinations for consistent output
-        return sorted(reachable, key=str)
+                # If this move would exceed our step limit, skip it
+                if new_dist > steps:
+                    continue
+                    
+                visited[(adj_key, new_used_secret_passage)] = new_dist
+                queue.append((adj, new_dist, new_used_secret_passage))
+                
+        # Convert reachable set to a sorted list of position strings
+        final_destinations = set()
+        for pos_key, used_secret_passage in reachable:
+            # For display, add a note if a secret passage was used to get here
+            display_name = f"{pos_key} (via secret passage)" if used_secret_passage else pos_key
+            final_destinations.add(display_name)
+                
+        return sorted(final_destinations, key=str)
     
     def display_board(self) -> None:
-        """Display the board layout with chess coordinates.
-        
-        Output format:
-            Rooms:
-            - Room Name (A1)
-            - Room Name (A3)
-            ...
-            
-            Corridors:
-            - C1 (E2)
-            - C2 (C2)
-            ...
-        """
+        """Display the board layout with chess coordinates."""
         if not hasattr(self.mansion, 'chess_coordinates'):
             print("\nBoard display not available: no chess coordinates found.")
             return
@@ -114,7 +138,7 @@ class Movement:
         # Add rooms section
         output.append("Rooms:")
         
-        # Get all rooms and sort them by their coordinates for consistent ordering
+        # Get all rooms and sort them by their coordinates
         rooms_with_coords = []
         for room in self.mansion.rooms:
             room_name = room.name
@@ -122,8 +146,8 @@ class Movement:
                 coord = self.mansion.chess_coordinates[room_name]
                 rooms_with_coords.append((room_name, coord))
         
-        # Sort rooms by their coordinates (A1, A3, A5, C1, C3, etc.)
-        rooms_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))  # Sort by number then letter
+        # Sort by number then letter (e.g., A1, A3, C1, etc.)
+        rooms_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))
         
         for room_name, coord in rooms_with_coords:
             output.append(f"- {room_name} ({coord})")
@@ -131,23 +155,26 @@ class Movement:
         # Add corridors section
         output.append("\nCorridors:")
         
-        # Get all corridors and sort them by their coordinates
+        # Get all corridors and sort them
         corridors_with_coords = []
         for corridor in [f"C{i}" for i in range(1, 13)]:
             if corridor in self.mansion.chess_coordinates:
                 coord = self.mansion.chess_coordinates[corridor]
                 corridors_with_coords.append((corridor, coord))
         
-        # Sort corridors by their coordinates
-        corridors_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))  # Sort by number then letter
+        # Sort by number then letter
+        corridors_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))
         
         for corridor, coord in corridors_with_coords:
             output.append(f"- {corridor} ({coord})")
         
-        # Join all lines with newlines and print
-        full_output = '\n'.join(output)
+        # Add secret passages section
+        output.append("\nSecret Passages:")
+        output.append("- Kitchen <-> Study")
+        output.append("- Conservatory <-> Lounge")
         
-        # Print the output through the mansion's output method if available, otherwise use print
+        # Print the output
+        full_output = '\n'.join(output)
         if hasattr(self.mansion, 'output'):
             self.mansion.output(full_output)
         else:
@@ -158,82 +185,97 @@ class Movement:
         Find the optimal (shortest) path between two positions using BFS.
         
         Args:
-            start_position: The starting position
-            end_position: The target position
+            start_position: The starting position (can be a Room, Corridor, or string name)
+            end_position: The target position (can be a Room, Corridor, or string name)
             max_steps: Maximum number of steps allowed (optional)
-            
+                
         Returns:
             A list of positions representing the path (excluding start), or [] if no path exists
         """
-        # Special handling for the unreachable test case
-        # In the test case, mock_mansion.get_adjacent_spaces.return_value = []
-        # So we need to check this early to handle the mocked behavior
-        try:
-            # Test if we're being mocked by checking the presence of 'return_value'
-            if hasattr(self.mansion.get_adjacent_spaces, 'return_value'):
-                if self.mansion.get_adjacent_spaces.return_value == []:
-                    return []
-        except AttributeError:
-            pass  # Not a mock, continue with normal behavior
-            
-        # Handle special case: if start and end are the same
+        # Handle case where we're already at the destination
         if start_position == end_position:
             return []
             
-        # Get normalized names for positions
+        # Get string names for positions for comparison
         start_name = getattr(start_position, 'name', start_position)
         end_name = getattr(end_position, 'name', end_position)
         
-        # Get adjacent spaces
+        # Check for direct secret passage if start and end are connected by one
+        if self._is_secret_passage_move(start_position, end_position):
+            return [end_position]
+            
+        # Get adjacent spaces from the starting position
         adj_spaces = self.mansion.get_adjacent_spaces(start_position)
         
         # If there are no adjacent spaces, path is impossible
         if not adj_spaces:
             return []
-            
-        # Direct adjacency check - this is the simplest case
+                
+        # Check if end is directly adjacent to start
         for adj in adj_spaces:
             adj_name = getattr(adj, 'name', adj)
-            if adj_name == end_name:
-                return [end_name]
-        
-        # Handle step limits - if we can't reach it in max_steps, return empty
-        if max_steps is not None and max_steps < 1:
+            if adj_name == end_name or adj == end_position:
+                return [adj]
+            
+        # If max_steps is 1 or less, and we haven't found a direct path, return empty
+        if max_steps is not None and max_steps <= 1:
             return []
+                
+        # For longer paths, use BFS
+        from collections import deque
+            
+        # Queue items are (current_position, path_taken, steps_used, used_secret_passage)
+        queue = deque()
+        visited = set()
         
-        # Initialize BFS
-        queue = deque([(start_position, [])])
-        visited = {start_name}
+        # Start with all adjacent positions from the starting position
+        for adj in adj_spaces:
+            # Check if this is a secret passage move
+            is_secret_passage = self._is_secret_passage_move(start_position, adj)
+            
+            # Add to queue with initial path and secret passage usage
+            queue.append((adj, [adj], 1, is_secret_passage))
+            
+            # Mark as visited with current secret passage state
+            adj_key = adj if isinstance(adj, str) else getattr(adj, 'name', str(adj))
+            visited.add((adj_key, is_secret_passage))
         
         while queue:
-            current, path = queue.popleft()
+            current, path, steps_used, used_secret_passage = queue.popleft()
+            current_key = current if isinstance(current, str) else getattr(current, 'name', str(current))
             
-            # Check if we've hit max steps
-            if max_steps is not None and len(path) >= max_steps:
-                continue
-            
-            # Get adjacent spaces
-            adjacent_spaces = self.mansion.get_adjacent_spaces(current)
-            
-            for next_space in adjacent_spaces:
-                next_name = getattr(next_space, 'name', next_space)
+            # Check if we've reached the end
+            if current == end_position:
+                return path
                 
-                # If we found the destination
-                if next_name == end_name:
-                    return path + [end_name]
+            # Don't explore further if we've used all our steps
+            if max_steps is not None and steps_used >= max_steps:
+                continue
+                
+            # Explore adjacent positions
+            for adj in self.mansion.get_adjacent_spaces(current):
+                adj_key = adj if isinstance(adj, str) else getattr(adj, 'name', str(adj))
+                
+                # Check if this is a secret passage move
+                is_secret_passage_move = self._is_secret_passage_move(current, adj)
+                
+                # If we've already used a secret passage and this is another one, skip it
+                new_used_secret_passage = used_secret_passage or is_secret_passage_move
+                
+                # Skip if we've already visited this position with the same or better secret passage usage
+                if (adj_key, new_used_secret_passage) in visited:
+                    continue
                     
-                # Otherwise, if unvisited, add to queue
-                if next_name not in visited:
-                    visited.add(next_name)
-                    new_path = path + [next_name]
-                    queue.append((next_space, new_path))
+                # Add to visited and queue
+                visited.add((adj_key, new_used_secret_passage))
+                queue.append((adj, path + [adj], steps_used + 1, new_used_secret_passage))
         
-        # If we get here, no path was found within max_steps
+        # If we get here, no path was found
         return []
-        
+
     def is_path_possible(self, start_position, end_position, max_steps):
         """
-        Check if it's possible to reach end_position from start_position within max_steps.
+        Check if a path exists between two positions within a given number of steps.
         
         Args:
             start_position: The starting position
@@ -241,18 +283,14 @@ class Movement:
             max_steps: Maximum number of steps allowed
             
         Returns:
-            Boolean indicating if the path is possible
+            bool: True if a path exists within max_steps, False otherwise
         """
-        # Special case: same position is always reachable
-        if start_position == end_position:
-            return True
-            
-        destinations = self.get_destinations_from(start_position, max_steps)
-        return end_position in destinations
-        
+        path = self.get_optimal_path(start_position, end_position, max_steps)
+        return len(path) > 0
+
     def get_neighboring_rooms(self, position, include_corridors=False):
         """
-        Get all rooms that are accessible from the current position.
+        Get all neighboring rooms (and optionally corridors) from a position.
         
         Args:
             position: The current position

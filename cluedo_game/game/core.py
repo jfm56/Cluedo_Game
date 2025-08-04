@@ -14,7 +14,7 @@ from cluedo_game.game.player_management import PlayerManager
 from cluedo_game.mansion import Mansion
 from cluedo_game.player import Player
 from cluedo_game.cards import Card, SuspectCard, WeaponCard, RoomCard, get_weapons, get_rooms, get_suspects, CHARACTER_STARTING_SPACES
-from cluedo_game.solution import Solution, create_solution as create_solution_fn
+from cluedo_game.solution import Solution, create_solution
 from cluedo_game.suggestion import Suggestion
 from cluedo_game.movement import Movement
 from cluedo_game.history import SuggestionHistory
@@ -75,7 +75,7 @@ class CluedoGame:
         self.player_manager = PlayerManager(self)  # Initialize player manager before accessing characters
         
         # Initialize game state
-        self.solution = create_solution_fn()
+        self.solution = create_solution()
         self.player: Optional[Player] = None
         self.ai_players: List[NashAIPlayer] = []
         self.players = []  # List to hold all player objects
@@ -110,21 +110,52 @@ class CluedoGame:
         Returns:
             bool: True if the game should end, False otherwise
         """
-        self.output(f"\n=== {self.player.name}'s Turn ===")
-        
-        # Move phase
-        self.move_phase()
-        
-        # If player is in a room, they can make a suggestion
-        if not hasattr(self.movement, 'is_corridor') or not self.movement.is_corridor(self.player.position):
-            if self.suggestion_phase():
-                return True  # Game over
-                
-        # Prompt for accusation
-        if hasattr(self, 'prompt_accusation'):
-            if self.prompt_accusation():
-                return True  # Game over
+        while True:  # Main turn loop to handle multiple actions
+            self.output(f"\n=== {self.player.name}'s Turn ===")
             
+            # Show available actions
+            actions = ["Move", "View Suggestion History", "End Turn"]
+            self.output("\nWhat would you like to do?")
+            for i, action in enumerate(actions, 1):
+                self.output(f"{i}. {action}")
+                
+            # Get player's choice
+            while True:
+                try:
+                    choice = int(self.input("Enter your choice: ").strip()) - 1
+                    if 0 <= choice < len(actions):
+                        break
+                    self.output(f"Please enter a number between 1 and {len(actions)}.")
+                except ValueError:
+                    self.output("Please enter a valid number.")
+            
+            # Handle the chosen action
+            if actions[choice] == "Move":
+                # Reset turn-specific flags
+                self._suggestion_made = False
+                
+                # Move phase
+                self.move_phase()
+                
+                # If player is in a room and hasn't made a suggestion yet, they can make a suggestion
+                in_room = not str(self.player.position).startswith('C')
+                if in_room and not getattr(self, '_suggestion_made', False):
+                    if self.suggestion_phase():
+                        return True  # Game over
+                
+                # After moving, prompt for accusation
+                if hasattr(self, 'prompt_accusation'):
+                    if self.prompt_accusation():
+                        return True  # Game over
+            
+            elif actions[choice] == "View Suggestion History":
+                self.show_suggestion_history()
+                input("\nPress Enter to continue...")
+                continue  # Show menu again
+                
+            elif actions[choice] == "End Turn":
+                break  # End the player's turn
+        
         return False  # Continue game
         
     def move_phase(self) -> None:
@@ -235,6 +266,7 @@ class CluedoGame:
         
         # This line is unreachable due to the return statements above
         return False
+        
     def make_suggestion(self) -> bool:
         """
         Make a suggestion in the current room.
@@ -243,10 +275,97 @@ class CluedoGame:
             bool: True if the suggestion was correct (game over), False otherwise
         """
         current_room = self.player.position
-        self.output(f"\nMaking suggestion in {current_room}...")
+        self.output(f"\nMaking suggestion in the {current_room}...")
         
-        # In a real implementation, this would handle the suggestion logic
-        # For now, we'll just return False to continue the game
+        # Set the flag to indicate a suggestion has been made this turn
+        self._suggestion_made = True
+        
+        # Get all suspects and weapons for the player to choose from
+        suspects = [s.name for s in get_suspects()]
+        weapons = [w.name for w in get_weapons()]
+        
+        # Get player's choice of suspect and weapon
+        self.output("\nChoose a suspect to suggest:")
+        for i, suspect in enumerate(suspects, 1):
+            self.output(f"{i}. {suspect}")
+            
+        while True:
+            try:
+                choice = int(self.input("Enter the number of the suspect: ")) - 1
+                if 0 <= choice < len(suspects):
+                    suggested_suspect = suspects[choice]
+                    break
+                self.output("Invalid choice. Please try again.")
+            except ValueError:
+                self.output("Please enter a number.")
+                
+        self.output("\nChoose a weapon to suggest:")
+        for i, weapon in enumerate(weapons, 1):
+            self.output(f"{i}. {weapon}")
+            
+        while True:
+            try:
+                choice = int(self.input("Enter the number of the weapon: ")) - 1
+                if 0 <= choice < len(weapons):
+                    suggested_weapon = weapons[choice]
+                    break
+                self.output("Invalid choice. Please try again.")
+            except ValueError:
+                self.output("Please enter a number.")
+        
+        # The room is the current room the player is in
+        suggested_room = current_room
+        
+        self.output(f"\nYou suggest: {suggested_suspect} with the {suggested_weapon} in the {suggested_room}")
+        
+        # Move the suggested suspect to the current room
+        for player in self.players:
+            if player.character.name == suggested_suspect:
+                player.position = current_room
+                self.output(f"Moved {suggested_suspect} to {current_room}")
+                break
+        
+        # Check if any other players can refute the suggestion
+        refuted = False
+        for player in self.players:
+            if player == self.player:
+                continue  # Skip the current player
+                
+            # Check if player has any of the suggested cards
+            refutation = None
+            for card in player.hand:
+                if (isinstance(card, SuspectCard) and card.name == suggested_suspect) or \
+                   (isinstance(card, WeaponCard) and card.name == suggested_weapon) or \
+                   (isinstance(card, RoomCard) and card.name == suggested_room):
+                    refutation = card
+                    break
+            
+            if refutation:
+                if isinstance(player, NashAIPlayer):
+                    self.output(f"{player.character.name} shows you a card.")
+                else:
+                    self.output(f"{player.character.name} shows you: {refutation.name}")
+                refuted = True
+                break
+        
+        if not refuted:
+            self.output("No one could refute your suggestion.")
+        
+        # Record the suggestion in history
+        suggestion = Suggestion(
+            suggesting_player=self.player.character.name,
+            character=suggested_suspect,
+            weapon=suggested_weapon,
+            room=suggested_room,
+            refuting_player=None,  # We don't track who refuted in this simple version
+            shown_card=None        # We don't track which card was shown
+        )
+        self.suggestion_history.add_suggestion(suggestion)
+        
+        # Mark that a suggestion has been made this turn
+        self._suggestion_made = True
+        
+        # In this implementation, suggestions never win the game - only accusations do
         return False
         
     def prompt_accusation(self) -> bool:
@@ -268,13 +387,12 @@ class CluedoGame:
                 self.output("Please enter 'y' or 'n'.")
     
     def is_ai_mode(self) -> bool:
-        """
-        Check if the game is in AI mode.
-        
-        Returns:
-            bool: True if in AI mode, False otherwise
-        """
+        """Check if the game is in AI mode."""
         return self.with_ai
+        
+    def show_suggestion_history(self) -> None:
+        """Display the game's suggestion history using the UI."""
+        self.ui.show_suggestion_history(self.suggestion_history)
         
     def deal_cards(self, all_cards=None) -> None:
         """Deal cards to all players, excluding the solution cards.

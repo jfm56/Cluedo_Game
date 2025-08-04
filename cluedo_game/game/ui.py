@@ -201,15 +201,31 @@ class GameUI:
         Args:
             players: List of player dictionaries with 'name', 'position', and 'eliminated' keys
         """
-        self.output("\nCurrent player locations:")
+        self.output("\nCurrent Player Locations:")
+        self.output("-" * 30)
         for player in players:
-            status = "(eliminated)" if player.get('eliminated', False) else ""
-            pos = player['position']
-            # Get chess coordinate for all positions
-            if hasattr(self, 'game') and hasattr(self.game, 'mansion') and hasattr(self.game.mansion, 'get_chess_coordinate'):
-                chess_coord = self.game.mansion.get_chess_coordinate(pos)
-                pos_str = f"{pos} [{chess_coord}]"
+            if player.get('eliminated'):
+                status = "(Eliminated)"
             else:
-                pos_str = str(pos)
+                status = ""
                 
-            self.output(f"- {player['name']}: {pos_str} {status}".strip())
+            pos = player.get('position', 'Unknown')
+            chess_coord = self.game.mansion.get_chess_coordinate(pos) if hasattr(self, 'game') and hasattr(self.game, 'mansion') else ""
+            chess_display = f" [{chess_coord}]" if chess_coord else ""
+            self.output(f"{player.get('name', 'Unknown')}: {pos}{chess_display} {status}")
+    
+    def show_suggestion_history(self, suggestion_history) -> None:
+        """
+        Display the game's suggestion history.
+        
+        Args:
+            suggestion_history: The SuggestionHistory instance containing all suggestions
+        """
+        self.output("\n=== SUGGESTION HISTORY ===")
+        if not suggestion_history or not suggestion_history.records:
+            self.output("No suggestions have been made yet.")
+            return
+            
+        # Use the string representation from SuggestionHistory
+        history_str = str(suggestion_history)
+        self.output(history_str)

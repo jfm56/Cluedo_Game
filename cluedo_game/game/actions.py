@@ -76,7 +76,13 @@ class ActionHandler:
         return destinations[0] if destinations else None
     
     def _move_player(self, player: Player, destination: str) -> None:
-        """Move player to the specified destination."""
+        """
+        Move player to the specified destination and handle room entry.
+        
+        Args:
+            player: The player to move
+            destination: The destination position (room or corridor)
+        """
         old_pos = player.position
         player.position = destination
         
@@ -85,6 +91,41 @@ class ActionHandler:
             self.game.last_door_passed[player.name] = old_pos
         
         self.game.output(f"{player.name} moved from {old_pos} to {destination}")
+        
+        # We'll handle suggestions in the main turn flow, not here
+        # This prevents duplicate suggestion prompts
+    
+    def _prompt_for_suggestion(self, player: Player, room: str) -> None:
+        """
+        Prompt the player to make a suggestion when entering a room.
+        
+        Args:
+            player: The player making the suggestion
+            room: The room the player entered
+        """
+        self.game.output(f"\nYou've entered the {room}. Would you like to make a suggestion?")
+        make_suggestion = self._get_yes_no("Make a suggestion? (y/n): ")
+        
+        if make_suggestion:
+            self.handle_suggestion(player)
+    
+    def _get_yes_no(self, prompt: str) -> bool:
+        """
+        Get a yes/no response from the player.
+        
+        Args:
+            prompt: The prompt to display
+            
+        Returns:
+            bool: True if the player answered 'y', False otherwise
+        """
+        while True:
+            response = self.game.input(prompt).strip().lower()
+            if response in ('y', 'yes'):
+                return True
+            elif response in ('n', 'no'):
+                return False
+            self.game.output("Please enter 'y' or 'n'.")
     
     def handle_suggestion(self, suggesting_player: Player) -> bool:
         """
@@ -102,8 +143,17 @@ class ActionHandler:
             return self._handle_ai_suggestion(suggesting_player)
     
     def _handle_human_suggestion(self, player: Player) -> bool:
-        """Handle a suggestion from a human player."""
-        self.game.output(f"\n{player.name}, you're in the {player.position}. Make a suggestion:")
+        """
+        Handle a suggestion from a human player.
+        
+        Args:
+            player: The player making the suggestion
+            
+        Returns:
+            bool: True if the game should end (correct accusation), False otherwise
+        """
+        current_room = str(player.position)
+        self.game.output(f"\n{player.name}, you're in the {current_room}. Make a suggestion:")
         
         # Get suspect choice
         suspects = [s.name for s in self.game.player_manager.characters]
@@ -113,13 +163,34 @@ class ActionHandler:
         weapons = [w.name for w in self.game.weapons]
         weapon = self._get_player_choice("Weapon", weapons)
         
-        # The room is the current room
-        room = str(player.position)
+        # Move the suggested character to the room
+        for character in self.game.player_manager.characters:
+            if character.name == suspect:
+                old_pos = character.position
+                character.position = current_room
+                self.game.output(f"Moved {character.name} from {old_pos} to {current_room}")
+                break
         
-        return self._process_suggestion(player, suspect, weapon, room)
+        # The room is the current room
+        room = current_room
+        
+        # Process the suggestion and set the flag
+        result = self._process_suggestion(player, suspect, weapon, room)
+        # Set the suggestion_made flag to prevent multiple suggestions per turn
+        if hasattr(self.game, '_suggestion_made'):
+            self.game._suggestion_made = True
+        return result
     
     def _handle_ai_suggestion(self, ai_player: Player) -> bool:
-        """Handle a suggestion from an AI player."""
+        """
+        Handle a suggestion from an AI player.
+        
+        Args:
+            ai_player: The AI player making the suggestion
+            
+        Returns:
+            bool: True if the game should end (correct accusation), False otherwise
+        """
         # Simple AI: suggest a random combination
         # This can be enhanced with more sophisticated AI logic
         suspects = [s.name for s in self.game.player_manager.characters]
@@ -128,6 +199,14 @@ class ActionHandler:
         suspect = random.choice(suspects)
         weapon = random.choice(weapons)
         room = str(ai_player.position)
+        
+        # Move the suggested character to the room
+        for character in self.game.player_manager.characters:
+            if character.name == suspect:
+                old_pos = character.position
+                character.position = room
+                self.game.output(f"Moved {character.name} from {old_pos} to {room}")
+                break
         
         self.game.output(f"\n{ai_player.name} suggests: {suspect} with the {weapon} in the {room}")
         return self._process_suggestion(ai_player, suspect, weapon, room)

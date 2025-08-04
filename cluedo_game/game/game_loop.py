@@ -127,8 +127,12 @@ class GameLoop:
         
         # Handle suggestions/accusations if in a room
         if self._should_make_suggestion(player):
-            return self.game.action_handler.handle_suggestion(player)
+            # Only return True if handle_suggestion returns True (game over)
+            # Otherwise, continue with the turn
+            if self.game.action_handler.handle_suggestion(player):
+                return True
             
+        # If we get here, the game should continue
         return False
     
     def _roll_dice(self) -> int:

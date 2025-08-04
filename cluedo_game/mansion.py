@@ -29,6 +29,11 @@ class Mansion:
             Room("Hall"),
             Room("Study")
         ]
+        
+        # Create a mapping of room names to Room objects for faster lookup
+        self._room_map = {room.name: room for room in self.rooms}
+        self.room_lookup = {room.name: room for room in self.rooms}
+        
         # List of corridor spaces (C1–C12) matching the visual board layout
         # C1: left of Lounge (Miss Scarlett start)
         # C2: below Dining Room (Colonel Mustard start)
@@ -70,9 +75,8 @@ class Mansion:
         
         # Reverse mapping from chess coordinates to spaces
         self.spaces_by_coordinates = {coord: space for space, coord in self.chess_coordinates.items()}
+        
         # Adjacency map matching board image
-        # Helper: room lookup by name
-        self.room_lookup = {room.name: room for room in self.rooms}
         self.adjacency = {
             # Corridors (outer edge, starting positions)
             "C1": [self.room_lookup["Lounge"], "C7"],                  # Miss Scarlett start
@@ -84,19 +88,43 @@ class Mansion:
             # Corridors (inner/intersection)
             "C7": ["C1", self.room_lookup["Hall"], "C8"],
             "C8": ["C2", self.room_lookup["Dining Room"], "C7", "C9"],
-            "C9": ["C3", self.room_lookup["Kitchen"], "C8", "C10"],
+            "C9": ["C3", self.room_lookup["Kitchen"], "C8", "C10", self.room_lookup["Billiard Room"]],
             "C10": ["C4", self.room_lookup["Ballroom"], "C9", "C11"],
-            "C11": ["C5", self.room_lookup["Conservatory"], "C10", "C12"],
-            "C12": ["C6", self.room_lookup["Study"], "C11", self.room_lookup["Hall"]],
+            "C11": ["C5", self.room_lookup["Conservatory"], "C10", "C12", self.room_lookup["Billiard Room"], self.room_lookup["Library"]],
+            "C12": ["C6", self.room_lookup["Study"], "C11", self.room_lookup["Hall"], self.room_lookup["Library"]],
             # Room to corridor connections
             self.room_lookup["Lounge"]: ["C1", "C7"],
             self.room_lookup["Dining Room"]: ["C2", "C8"],
             self.room_lookup["Kitchen"]: ["C3", "C9"],
             self.room_lookup["Ballroom"]: ["C4", "C10"],
+            self.room_lookup["Billiard Room"]: ["C9", "C11"],  # Billiard Room connects to C9 and C11
+            self.room_lookup["Library"]: ["C11", "C12"],  # Library connects to C11 and C12
             self.room_lookup["Conservatory"]: ["C5", "C11"],
             self.room_lookup["Study"]: ["C6", "C12"],
             self.room_lookup["Hall"]: ["C7", "C12"],
         }
+        
+    def get_room(self, position):
+        """Get the Room object for a given position if it's a room.
+        
+        Args:
+            position: The position to check (can be a Room object or room name)
+            
+        Returns:
+            Room: The Room object if the position is a room, None otherwise
+        """
+        if position is None:
+            return None
+            
+        # If position is already a Room object
+        if isinstance(position, Room):
+            return position if position.name in self._room_map else None
+            
+        # If position is a room name
+        if isinstance(position, str):
+            return self._room_map.get(position)
+            
+        return None
 
 
     def get_rooms(self):
@@ -120,18 +148,133 @@ class Mansion:
         return [s for s in self.get_adjacent_spaces(space) if s in self.rooms]
         
     def get_chess_coordinate(self, space):
-        """Convert a space name or Room object to its chess coordinate (e.g., A1, B2)."""
+        """Convert a space name or Room object to its chess coordinate (e.g., A1, B2).
+        
+        Args:
+            space: A Room object, room name (case-insensitive), or corridor name (case-insensitive)
+            
+        Returns:
+            str: The chess coordinate (e.g., 'A1', 'E2') or the original space name if not found
+        """
+        if space is None:
+            return None
+            
         # If it's a Room object, get its name
         if hasattr(space, 'name'):
             space = space.name
-        
-        # Return the chess coordinate if it exists, otherwise return the original space name
-        return self.chess_coordinates.get(space, space)
+            
+        if not isinstance(space, str):
+            return str(space)
+            
+        # Normalize input to handle case insensitivity
+        space = space.strip()
+        if not space:
+            return ""
+            
+        # Check if it's a corridor (C followed by digits)
+        if space.upper().startswith('C'):
+            try:
+                # Extract corridor number and normalize format (e.g., 'c1' -> 'C1')
+                corridor_num = int(space[1:])
+                if 1 <= corridor_num <= 12:
+                    corridor = f"C{corridor_num}"
+                    # Return the mapped coordinate for the corridor (e.g., 'C1' -> 'E2')
+                    return self.chess_coordinates.get(corridor, corridor)
+            except (ValueError, IndexError):
+                pass  # Not a valid corridor number, continue with normal lookup
+                
+        # Try exact match first (case-sensitive)
+        if space in self.chess_coordinates:
+            return self.chess_coordinates[space]
+            
+        # Try case-insensitive match for room names
+        space_lower = space.lower()
+        for name, coord in self.chess_coordinates.items():
+            if isinstance(name, str) and name.lower() == space_lower:
+                return coord
+                
+        # If not found, return the original space
+        return space
     
     def get_space_from_coordinate(self, coordinate):
-        """Convert a chess coordinate (e.g., A1, B2) to its corresponding space name."""
-        # Return the space name if the coordinate exists, otherwise return the original coordinate
-        return self.spaces_by_coordinates.get(coordinate, coordinate)
+        """Convert a chess coordinate (e.g., A1, B2) to its corresponding space name.
+        
+        Args:
+            coordinate: A chess coordinate (e.g., 'A1', 'E2') or a space name to pass through
+            
+        Returns:
+            str: The space name (room or corridor) or the original coordinate if not found
+        """
+        if coordinate is None:
+            return None
+            
+        # If input is a Room object, return its name
+        if hasattr(coordinate, 'name'):
+            return coordinate.name
+            
+        if not isinstance(coordinate, str):
+            return str(coordinate)
+            
+        # Normalize input
+        coordinate = coordinate.strip()
+        if not coordinate:
+            return ""
+            
+        # First try exact match for coordinates (e.g., 'A1' -> 'Kitchen', 'E2' -> 'C1')
+        if coordinate in self.spaces_by_coordinates:
+            return self.spaces_by_coordinates[coordinate]
+            
+        # Try case-insensitive match for coordinates
+        coordinate_upper = coordinate.upper()
+        for coord, space in self.spaces_by_coordinates.items():
+            if coord.upper() == coordinate_upper:
+                return space
+                
+        # Check if it's a corridor name (C followed by digits)
+        if coordinate.upper().startswith('C'):
+            try:
+                # Extract corridor number and normalize format (e.g., 'c1' -> 'C1')
+                corridor_num = int(coordinate[1:])
+                if 1 <= corridor_num <= 12:
+                    return f"C{corridor_num}"  # Return normalized corridor name
+            except (ValueError, IndexError):
+                pass  # Not a valid corridor number, continue with normal lookup
+                
+        # Try exact match for coordinates (e.g., 'A1' -> 'Kitchen', 'E2' -> 'C1')
+        if coordinate in self.spaces_by_coordinates:
+            return self.spaces_by_coordinates[coordinate]
+            
+        # Try case-insensitive match for coordinates
+        coordinate_upper = coordinate.upper()
+        for coord, space in self.spaces_by_coordinates.items():
+            if coord.upper() == coordinate_upper:
+                return space
+                
+        # If not found, return the original coordinate
+        return coordinate
+    
+    def display_chess_coordinates(self):
+        """Display all rooms and corridors with their chess coordinates.
+        
+        The output will be in the format:
+        Chess Coordinates:
+        Rooms:
+          Room Name (XY)
+          ...
+        Corridors:
+          C1 (XY)
+          ...
+        """
+        print("Chess Coordinates:")
+        print("Rooms:")
+        for room in sorted(self.rooms, key=lambda r: r.name):
+            coord = self.get_chess_coordinate(room)
+            print(f"  {room.name} ({coord})")
+        
+        print("\nCorridors:")
+        for corridor in sorted(self.corridors):
+            coord = self.get_chess_coordinate(corridor)
+            print(f"  {corridor} ({coord})")
     
     def display_with_chess_coordinates(self):
         """Return a string representation of the mansion with chess coordinates."""

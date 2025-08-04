@@ -2,6 +2,16 @@
 Card classes for Cluedo game: Suspect, Weapon, Room.
 """
 
+# Mapping of character names to starting positions
+CHARACTER_STARTING_SPACES = {
+    "Miss Scarlett": "C1",         # bottom left, left of Lounge
+    "Colonel Mustard": "C2",      # left middle, below Dining Room
+    "Mrs. White": "C3",           # top left, above Kitchen
+    "Reverend Green": "C4",       # top middle, above Ballroom
+    "Mrs. Peacock": "C5",         # top right, above Conservatory
+    "Professor Plum": "C6"        # right middle, right of Study
+}
+
 class Card:
     """Base class for all cards in Cluedo."""
     def __init__(self, name):
@@ -17,7 +27,10 @@ class Card:
         return f"{self.__class__.__name__}(name={self.name})"
 
 class SuspectCard(Card):
-    pass
+    def __init__(self, name):
+        super().__init__(name)
+        # Set the starting position based on the character's name
+        self.position = CHARACTER_STARTING_SPACES.get(name, None)
 
 class WeaponCard(Card):
     pass
@@ -57,16 +70,6 @@ ROOMS = [
     "Lounge",
     "Dining Room"
 ]
-
-# Mapping of character names to starting positions
-CHARACTER_STARTING_SPACES = {
-    "Miss Scarlett": "C1",         # bottom left, left of Lounge
-    "Colonel Mustard": "C2",      # left middle, below Dining Room
-    "Mrs. White": "C3",           # top left, above Kitchen
-    "Reverend Green": "C4",       # top middle, above Ballroom
-    "Mrs. Peacock": "C5",         # top right, above Conservatory
-    "Professor Plum": "C6"        # right middle, right of Study
-}
 
 def get_suspects():
     """Return a list of all suspect card instances."""

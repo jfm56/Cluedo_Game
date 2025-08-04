@@ -68,7 +68,7 @@ class TestMansion:
         return Mansion()
 
     def test_mansion_init(self, mansion):
-        """Test Mansion initialization."""
+        """Test Mansion initialization and board structure."""
         # Check rooms were created
         assert len(mansion.rooms) == 9
         assert all(isinstance(room, Room) for room in mansion.rooms)
@@ -85,7 +85,10 @@ class TestMansion:
         # Check corridors
         assert len(mansion.corridors) == 12
         for i in range(1, 13):
-            assert f"C{i}" in mansion.corridors
+            corridor = f"C{i}"
+            assert corridor in mansion.corridors
+            # Verify corridor is in adjacency map
+            assert corridor in mansion.adjacency or any(corridor in adj for adj in mansion.adjacency.values())
         
         # Check room lookup
         assert len(mansion.room_lookup) == 9
@@ -103,6 +106,11 @@ class TestMansion:
         ballroom = mansion.room_lookup["Ballroom"]
         assert "C4" in mansion.adjacency[ballroom]
         assert "C10" in mansion.adjacency[ballroom]
+        
+        # Verify that rooms are only connected to corridors, not directly to other rooms
+        for room in mansion.rooms:
+            for adjacent in mansion.adjacency[room]:
+                assert adjacent.startswith("C"), f"Room {room.name} is directly connected to non-corridor {adjacent}"
 
     def test_get_rooms(self, mansion):
         """Test get_rooms method."""
@@ -127,42 +135,68 @@ class TestMansion:
         assert all(space in all_spaces for space in mansion.corridors)
 
     def test_get_adjacent_spaces(self, mansion):
-        """Test get_adjacent_spaces method."""
-        # Test room adjacency
+        """Test get_adjacent_spaces method with various space types."""
+        # Test room adjacency (Kitchen)
         kitchen = mansion.room_lookup["Kitchen"]
         kitchen_adjacent = mansion.get_adjacent_spaces(kitchen)
-        assert "C3" in kitchen_adjacent
-        assert "C9" in kitchen_adjacent
-        assert len(kitchen_adjacent) == 2
+        assert "C3" in kitchen_adjacent, "Kitchen should be adjacent to C3"
+        assert "C9" in kitchen_adjacent, "Kitchen should be adjacent to C9"
+        assert len(kitchen_adjacent) == 2, "Kitchen should have exactly 2 adjacent spaces"
         
-        # Test corridor adjacency
+        # Test starting corridor (C1 - Miss Scarlett's start)
         c1_adjacent = mansion.get_adjacent_spaces("C1")
-        assert mansion.room_lookup["Lounge"] in c1_adjacent
-        assert "C7" in c1_adjacent
-        assert len(c1_adjacent) == 2
+        assert mansion.room_lookup["Lounge"] in c1_adjacent, "C1 should be adjacent to Lounge"
+        assert "C7" in c1_adjacent, "C1 should be adjacent to C7"
+        assert len(c1_adjacent) == 2, "C1 should have exactly 2 adjacent spaces"
         
-        # Test intersection corridor
+        # Test intersection corridor (C8 - near Dining Room)
         c8_adjacent = mansion.get_adjacent_spaces("C8")
-        assert "C2" in c8_adjacent
-        assert mansion.room_lookup["Dining Room"] in c8_adjacent
-        assert "C7" in c8_adjacent
-        assert "C9" in c8_adjacent
-        assert len(c8_adjacent) == 4
+        assert "C2" in c8_adjacent, "C8 should be adjacent to C2"
+        assert mansion.room_lookup["Dining Room"] in c8_adjacent, "C8 should be adjacent to Dining Room"
+        assert "C7" in c8_adjacent, "C8 should be adjacent to C7"
+        assert "C9" in c8_adjacent, "C8 should be adjacent to C9"
+        assert len(c8_adjacent) == 4, "C8 should have exactly 4 adjacent spaces"
+        
+        # Test edge corridor (C6 - Professor Plum's start)
+        c6_adjacent = mansion.get_adjacent_spaces("C6")
+        assert mansion.room_lookup["Study"] in c6_adjacent, "C6 should be adjacent to Study"
+        assert "C12" in c6_adjacent, "C6 should be adjacent to C12"
+        assert len(c6_adjacent) == 2, "C6 should have exactly 2 adjacent spaces"
+        
+        # Test with invalid space (should return empty list or handle gracefully)
+        invalid_adjacent = mansion.get_adjacent_spaces("InvalidSpace123")
+        assert isinstance(invalid_adjacent, list), "Should return a list even for invalid spaces"
+        assert len(invalid_adjacent) == 0, "Invalid space should have no adjacent spaces"
         
         # Test non-existent space
         assert mansion.get_adjacent_spaces("NonExistent") == []
 
     def test_get_adjacent_rooms(self, mansion):
-        """Test get_adjacent_rooms method."""
-        # Test corridor with adjacent rooms
+        """Test get_adjacent_rooms method with various space types."""
+        # From a corridor, should return adjacent rooms
         c1_adjacent_rooms = mansion.get_adjacent_rooms("C1")
-        assert len(c1_adjacent_rooms) == 1
-        assert mansion.room_lookup["Lounge"] in c1_adjacent_rooms
+        assert len(c1_adjacent_rooms) == 1, "C1 should be adjacent to 1 room (Lounge)"
+        assert mansion.room_lookup["Lounge"] in c1_adjacent_rooms, "C1 should be adjacent to Lounge"
         
-        # Test room with no adjacent rooms
+        # From an intersection corridor, should return adjacent rooms
+        c8_adjacent_rooms = mansion.get_adjacent_rooms("C8")
+        assert len(c8_adjacent_rooms) == 1, "C8 should be adjacent to 1 room (Dining Room)"
+        assert mansion.room_lookup["Dining Room"] in c8_adjacent_rooms, "C8 should be adjacent to Dining Room"
+        
+        # From a room, should return empty list (rooms are only connected to corridors)
         kitchen = mansion.room_lookup["Kitchen"]
         kitchen_adjacent_rooms = mansion.get_adjacent_rooms(kitchen)
-        assert len(kitchen_adjacent_rooms) == 0
+        assert len(kitchen_adjacent_rooms) == 0, "Rooms should not be directly connected to other rooms"
+        
+        # Test with invalid space (should return empty list)
+        invalid_adjacent_rooms = mansion.get_adjacent_rooms("InvalidSpace123")
+        assert isinstance(invalid_adjacent_rooms, list), "Should return a list even for invalid spaces"
+        assert len(invalid_adjacent_rooms) == 0, "Invalid space should have no adjacent rooms"
+        
+        # Test with a room that has multiple corridor connections (should still return empty list)
+        study = mansion.room_lookup["Study"]
+        study_adjacent_rooms = mansion.get_adjacent_rooms(study)
+        assert len(study_adjacent_rooms) == 0, "Rooms should never have adjacent rooms, only corridors"
         
         # Test intersection corridor with adjacent rooms
         c8_adjacent_rooms = mansion.get_adjacent_rooms("C8")
@@ -182,33 +216,91 @@ class TestMovement:
         mansion = MagicMock(spec=Mansion)
         
         # Mock rooms and corridors
-        mansion.get_rooms.return_value = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room']
-        mansion.get_corridors.return_value = ['C1', 'C2', 'C3', 'C4', 'C5']
+        mansion.rooms = [
+            Room("Kitchen"), Room("Ballroom"), Room("Conservatory"), 
+            Room("Dining Room"), Room("Billiard Room"), Room("Library"),
+            Room("Lounge"), Room("Hall"), Room("Study")
+        ]
+        mansion.corridors = [f"C{i}" for i in range(1, 13)]
         
-        # Mock rooms and corridors as actual rooms, not just strings
-        rooms = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room']
-        mansion.rooms = [MagicMock(name=room) for room in rooms]
-        for mock_room, room_name in zip(mansion.rooms, rooms):
-            mock_room.name = room_name
+        # Create room lookup
+        mansion.room_lookup = {room.name: room for room in mansion.rooms}
         
-        # Mock adjacency map for strings (for testing)
-        adjacency_map = {
-            'Kitchen': ['C1', 'C5'],
-            'Ballroom': ['C2', 'C3'],
-            'Conservatory': ['C3'],
-            'Billiard Room': ['C4', 'C5'],
-            'C1': ['Kitchen', 'C2'],
-            'C2': ['C1', 'Ballroom', 'C4'],
-            'C3': ['Ballroom', 'Conservatory'],
-            'C4': ['C2', 'Billiard Room'],
-            'C5': ['Kitchen', 'Billiard Room']
+        # Mock chess coordinates
+        mansion.chess_coordinates = {
+            # Rooms
+            "Kitchen": "A1", "Dining Room": "C1", "Lounge": "E1",
+            "Ballroom": "A3", "Billiard Room": "C3", "Hall": "E3",
+            "Conservatory": "A5", "Library": "C5", "Study": "E5",
+            # Corridors
+            "C1": "E2", "C2": "C2", "C3": "A2", "C4": "A4", "C5": "B5",
+            "C6": "F5", "C7": "D2", "C8": "B2", "C9": "B3", "C10": "B4",
+            "C11": "C4", "C12": "D4"
         }
         
-        # Mock the get_adjacent_spaces method
-        mansion.get_adjacent_spaces.side_effect = lambda space: [
-            next((r for r in mansion.rooms if r.name == adj), adj) 
-            for adj in adjacency_map.get(getattr(space, 'name', space), [])
-        ]
+        # Reverse mapping
+        mansion.spaces_by_coordinates = {v: k for k, v in mansion.chess_coordinates.items()}
+        
+        # Create adjacency map matching the actual game board
+        mansion.adjacency = {
+            # Corridors (outer edge, starting positions)
+            "C1": [mansion.room_lookup["Lounge"], "C7"],
+            "C2": [mansion.room_lookup["Dining Room"], "C8"],
+            "C3": [mansion.room_lookup["Kitchen"], "C9"],
+            "C4": [mansion.room_lookup["Ballroom"], "C10"],
+            "C5": [mansion.room_lookup["Conservatory"], "C11"],
+            "C6": [mansion.room_lookup["Study"], "C12"],
+            # Corridors (inner/intersection)
+            "C7": ["C1", mansion.room_lookup["Hall"], "C8"],
+            "C8": ["C2", mansion.room_lookup["Dining Room"], "C7", "C9"],
+            "C9": ["C3", mansion.room_lookup["Kitchen"], "C8", "C10"],
+            "C10": ["C4", mansion.room_lookup["Ballroom"], "C9", "C11"],
+            "C11": ["C5", mansion.room_lookup["Conservatory"], "C10", "C12"],
+            "C12": ["C6", mansion.room_lookup["Study"], "C11", mansion.room_lookup["Hall"]],
+            # Rooms
+            mansion.room_lookup["Lounge"]: ["C1", "C7"],
+            mansion.room_lookup["Dining Room"]: ["C2", "C8"],
+            mansion.room_lookup["Kitchen"]: ["C3", "C9"],
+            mansion.room_lookup["Ballroom"]: ["C4", "C10"],
+            mansion.room_lookup["Conservatory"]: ["C5", "C11"],
+            mansion.room_lookup["Study"]: ["C6", "C12"],
+            mansion.room_lookup["Hall"]: ["C7", "C12"],
+            mansion.room_lookup["Billiard Room"]: ["C3"],
+            mansion.room_lookup["Library"]: ["C5"]
+        }
+        
+        # Mock get_adjacent_spaces to use our adjacency map
+        def get_adjacent_spaces(space):
+            if space is None:
+                return []
+                
+            # Handle both string and Room object lookups
+            if isinstance(space, Room):
+                space = space.name
+            
+            # Special case for Room objects in the adjacency map
+            for key, value in mansion.adjacency.items():
+                if isinstance(key, Room) and key.name == space:
+                    return value
+                    
+            # Default case for string lookups
+            return mansion.adjacency.get(space, [])
+            
+        mansion.get_adjacent_spaces.side_effect = get_adjacent_spaces
+        
+        # Mock get_chess_coordinate
+        def get_chess_coordinate(space):
+            if isinstance(space, Room):
+                space = space.name
+            return mansion.chess_coordinates.get(space, space)
+            
+        mansion.get_chess_coordinate.side_effect = get_chess_coordinate
+        
+        # Mock get_space_from_coordinate
+        def get_space_from_coordinate(coord):
+            return mansion.spaces_by_coordinates.get(coord, coord)
+            
+        mansion.get_space_from_coordinate.side_effect = get_space_from_coordinate
         
         return mansion
     
@@ -217,66 +309,156 @@ class TestMovement:
         """Create a Movement instance with the mock mansion."""
         return Movement(mock_mansion)
     
+    def test_display_board(self, movement, capsys):
+        """Test displaying the board with chess coordinates and verify all spaces are included."""
+        movement.display_board()
+        captured = capsys.readouterr()
+        output = captured.out
+        
+        # Check all rooms are displayed with their chess coordinates
+        room_coords = {
+            "Kitchen (A1)", "Ballroom (A3)", "Conservatory (A5)",
+            "Dining Room (C1)", "Billiard Room (C3)", "Library (C5)",
+            "Lounge (E1)", "Hall (E3)", "Study (E5)"
+        }
+        
+        # Check all corridors are displayed with their chess coordinates
+        corridor_coords = {
+            "C1 (E2)", "C2 (C2)", "C3 (A2)", "C4 (A4)", "C5 (B5)",
+            "C6 (F5)", "C7 (D2)", "C8 (B2)", "C9 (B3)", "C10 (B4)",
+            "C11 (C4)", "C12 (D4)"
+        }
+        
+        # Verify all rooms are in the output
+        for room in room_coords:
+            assert room in output, f"{room} should be displayed in the board output"
+        
+        # Verify all corridors are in the output
+        for corridor in corridor_coords:
+            assert corridor in output, f"{corridor} should be displayed in the board output"
+        
+        # Verify the output is formatted nicely (basic check)
+        lines = [line.strip() for line in output.split('\n') if line.strip()]
+        assert len(lines) > 15, "Board output should have multiple lines"
+        
+        # Check for section headers
+        assert "Rooms:" in output, "Should have a 'Rooms:' section header"
+        assert "Corridors:" in output, "Should have a 'Corridors:' section header"
+        
+        # Check that coordinates are in the correct format (letter followed by number)
+        import re
+        coord_pattern = r'[A-Za-z]\d+'
+        for line in lines:
+            if '(' in line and ')' in line:
+                # Extract content between parentheses
+                match = re.search(r'\((.*?)\)', line)
+                if match:
+                    coord = match.group(1)
+                    assert re.fullmatch(coord_pattern, coord), f"Invalid coordinate format: {coord}"
+
     def test_init(self, mock_mansion):
         """Test the initialization of the Movement class."""
         movement = Movement(mock_mansion)
         assert movement.mansion == mock_mansion
     
-    def test_get_destinations_from_with_zero_steps(self, movement):
+    def test_get_destinations_from_with_zero_steps(self, movement, mock_mansion):
         """Test getting destinations with zero steps (should return empty list)."""
-        start_position = 'Kitchen'
-        destinations = movement.get_destinations_from(start_position, 0)
+        # Test with room as starting point
+        destinations = movement.get_destinations_from("Kitchen", 0)
+        assert destinations == [], "With 0 steps, should return empty list"
         
-        assert len(destinations) == 0
+        # Test with corridor as starting point
+        destinations = movement.get_destinations_from("C1", 0)
+        assert destinations == [], "With 0 steps, should return empty list"
+        
+        # Test with Room object as starting point
+        kitchen = mock_mansion.room_lookup["Kitchen"]
+        destinations = movement.get_destinations_from(kitchen, 0)
+        assert destinations == [], "With 0 steps, should return empty list even with Room object"
     
     def test_get_destinations_from_with_one_step(self, movement, mock_mansion):
         """Test getting destinations with one step."""
-        # Setup expected adjacency
-        start_position = 'Kitchen'
-        mock_mansion.get_adjacent_spaces.side_effect = lambda space: ['C1', 'C5'] if getattr(space, 'name', space) == start_position else []
-        mock_mansion.get_rooms.return_value = ['Kitchen']
-    
-        destinations = movement.get_destinations_from(start_position, 1)
-    
-        # Convert any Room objects to strings for easier assertion
-        dest_names = [getattr(d, 'name', d) for d in destinations]
-    
-        # Should only include adjacent spaces (NOT starting position, per implementation)
-        assert len(dest_names) == 2  # C1, C5
-        assert 'C1' in dest_names
-        assert 'C5' in dest_names
+        # Mock the mansion's get_adjacent_spaces to return expected values
+        def mock_get_adjacent_spaces(space):
+            if space == "Kitchen" or (hasattr(space, 'name') and space.name == "Kitchen"):
+                return ["C3", "C9"]
+            elif space == "C1":
+                return ["Lounge", "C7"]
+            elif space == "C8":
+                return ["C2", "Dining Room", "C7", "C9"]
+            return []
+            
+        mock_mansion.get_adjacent_spaces.side_effect = mock_get_adjacent_spaces
         
+        # From a room, should get adjacent corridors
+        kitchen_destinations = movement.get_destinations_from("Kitchen", 1)
+        assert set(kitchen_destinations) == {"C3", "C9"}, "From Kitchen with 1 step, should reach C3 and C9"
+        
+        # From a corridor, should get adjacent rooms and corridors
+        c1_destinations = movement.get_destinations_from("C1", 1)
+        assert set(c1_destinations) == {"Lounge", "C7"}, "From C1 with 1 step, should reach Lounge and C7"
+        
+        # From an intersection corridor
+        c8_destinations = movement.get_destinations_from("C8", 1)
+        expected_destinations = {"C2", "Dining Room", "C7", "C9"}
+        assert set(c8_destinations) == expected_destinations, f"From C8 with 1 step, should reach {expected_destinations}"
+        
+        # Test with Room object as starting point
+        kitchen = mock_mansion.room_lookup["Kitchen"]
+        kitchen_destinations = movement.get_destinations_from(kitchen, 1)
+        assert set(kitchen_destinations) == {"C3", "C9"}, "Should work with Room objects as starting point"
+    
     def test_get_destinations_from_with_room_name_string(self, movement, mock_mansion):
         """Test getting destinations with a room name as string."""
-        # Setup the test to convert a string room name to a Room object
-        kitchen_room = mock_mansion.rooms[0]  # Kitchen room object
-        mock_mansion.get_adjacent_spaces.side_effect = lambda space: ['C1', 'C5'] if space == kitchen_room else []
+        # Mock the mansion's get_adjacent_spaces to return expected values
+        def mock_get_adjacent_spaces(space):
+            if space == "Kitchen" or (hasattr(space, 'name') and space.name == "Kitchen"):
+                return ["C3", "C9"]
+            elif space == "Dining Room" or (hasattr(space, 'name') and space.name == "Dining Room"):
+                return ["C2", "C8"]
+            return []
+            
+        mock_mansion.get_adjacent_spaces.side_effect = mock_get_adjacent_spaces
         
-        # Call with string name instead of room object
-        destinations = movement.get_destinations_from('Kitchen', 1)
+        # Should work the same as with Room object
+        kitchen_destinations = movement.get_destinations_from("Kitchen", 1)
+        assert set(kitchen_destinations) == {"C3", "C9"}, "Should work with room name as string"
         
-        # Verify it correctly converted the string to a Room object
-        assert len(destinations) == 2
-        assert 'C1' in destinations
-        assert 'C5' in destinations
+        # Test with room that has a space in the name
+        dining_room_destinations = movement.get_destinations_from("Dining Room", 1)
+        assert set(dining_room_destinations) == {"C2", "C8"}, "Should work with room names containing spaces"
+        
+        # Test with invalid room name (should return empty list)
+        invalid_destinations = movement.get_destinations_from("Nonexistent Room", 1)
+        assert invalid_destinations == [], "Should return empty list for invalid room names"
+        
+        # Test with empty string (should return empty list)
+        empty_destinations = movement.get_destinations_from("", 1)
+        assert empty_destinations == [], "Should return empty list for empty string"
     
     def test_get_destinations_from_with_multiple_steps(self, movement, mock_mansion):
         """Test getting destinations with multiple steps."""
-        # Setup adjacency map for BFS traversal
-        adjacency_map = {
-            'Kitchen': ['C1', 'C5'],
-            'C1': ['Kitchen', 'C2'],
-            'C2': ['C1', 'Ballroom', 'C4'],
-            'Ballroom': ['C2', 'C3'],
-            'C3': ['Ballroom', 'Conservatory'],
-            'Conservatory': ['C3'],
-            'C4': ['C2', 'Billiard Room'],
-            'Billiard Room': ['C4', 'C5'],
-            'C5': ['Kitchen', 'Billiard Room']
-        }
+        # From Kitchen, 2 steps
+        destinations = movement.get_destinations_from("Kitchen", 2)
+        # Should include:
+        # - C3's adjacents: Kitchen (already at start, excluded), C9
+        # - C9's adjacents: Kitchen (already at start, excluded), C3, C8, C10
+        # So with 2 steps from Kitchen, we can reach:
+        # - C3 (1 step)
+        # - C9 (1 step)
+        # - C8 (via C9)
+        # - C10 (via C9)
+        expected = {"C3", "C9", "C8", "C10"}
+        assert set(destinations) == expected, f"From Kitchen with 2 steps, should reach {expected}"
         
-        # Mock get_adjacent_spaces for each space
-        mock_mansion.get_adjacent_spaces.side_effect = lambda space: adjacency_map.get(getattr(space, 'name', space), [])
+        # From C1 (Lounge's corridor), 3 steps
+        destinations = movement.get_destinations_from("C1", 3)
+        # Should be able to reach:
+        # - 1 step: Lounge, C7
+        # - 2 steps: From C7: Hall, C8
+        # - 3 steps: From C8: C2, Dining Room, C9; From Hall: C12
+        expected = {"Lounge", "C7", "Hall", "C8", "C2", "Dining Room", "C9", "C12"}
+        assert set(destinations) == expected, f"From C1 with 3 steps, should reach {expected}"
         
         # Test with 2 steps from Kitchen
         destinations = movement.get_destinations_from('Kitchen', 2)
@@ -285,11 +467,15 @@ class TestMovement:
         dest_names = [getattr(d, 'name', d) for d in destinations]
         
         # Should include all spaces reachable in 2 steps (but not starting point)
-        expected_destinations = ['C1', 'C5', 'C2', 'Billiard Room']
+        # From Kitchen (0 steps)
+        # 1 step: C3, C9
+        # 2 steps: From C3: Kitchen (excluded), C9 (already at 1 step)
+        #          From C9: C3 (already at 1 step), C8, C10
+        expected_destinations = ['C3', 'C9', 'C8', 'C10']
         for expected in expected_destinations:
-            assert expected in dest_names
-        assert 'Kitchen' not in dest_names  # Starting point shouldn't be included
-        assert 'Ballroom' not in dest_names  # 3 steps away, not reachable
+            assert expected in dest_names, f"Expected {expected} in destinations but got {dest_names}"
+        assert 'Kitchen' not in dest_names, "Starting point should not be included"
+        assert len(dest_names) == len(expected_destinations), f"Expected {len(expected_destinations)} destinations but got {len(dest_names)}: {dest_names}"
     
     def test_get_destinations_from_corridor(self, movement, mock_mansion):
         """Test getting destinations starting from a corridor."""
@@ -454,14 +640,16 @@ class TestMovement:
         
     def test_get_neighboring_rooms_with_corridors(self, movement, mock_mansion):
         """Test getting neighboring rooms including corridors."""
-        # Setup adjacent spaces to match what get_adjacent_spaces returns
-        mock_mansion.get_adjacent_spaces.return_value = ['C1', 'C5']
+        # Setup adjacent spaces to match what get_adjacent_spaces returns for Kitchen
+        # According to the board layout, Kitchen is connected to C3 and C9
+        mock_mansion.get_adjacent_spaces.return_value = ['C3', 'C9']
         
         # Test with include_corridors flag
         neighboring_spaces = movement.get_neighboring_rooms('Kitchen', include_corridors=True)
         
         # The actual implementation returns corridors only, not rooms
-        assert set(neighboring_spaces) == set(['C1', 'C5'])
+        assert set(neighboring_spaces) == set(['C3', 'C9']), \
+            f"Expected neighboring corridors to be ['C3', 'C9'] but got {neighboring_spaces}"
         mock_mansion.get_adjacent_spaces.assert_called_once_with('Kitchen')
         
     def test_find_closest_room(self, movement, mock_mansion):

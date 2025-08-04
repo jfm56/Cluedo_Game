@@ -3,6 +3,7 @@ Movement module for the Cluedo game.
 Handles movement logic for both human and AI players using BFS algorithm.
 """
 from collections import deque
+from typing import List, Dict, Any
 
 
 class Movement:
@@ -38,46 +39,119 @@ class Movement:
                     start_position = room
                     break
         
-        # Use BFS to find all reachable spaces within the given number of steps
-        rooms = set(self.mansion.get_rooms())
-        
         # Track visited positions with their distances
         visited = {}
         queue = deque([(start_position, 0)])  # (position, distance)
         reachable = set()
         
-        # Get position identifier (either name or the object itself)
-        start_key = getattr(start_position, 'name', start_position)
+        def get_position_key(pos):
+            """Helper to get a consistent key for any position type."""
+            if isinstance(pos, str):
+                return pos
+            return getattr(pos, 'name', str(pos))
+            
+        # Get the starting position key
+        start_key = get_position_key(start_position)
         visited[start_key] = 0
         
+        print(f"Starting BFS from {start_key} with {steps} steps")  # Debug print
+            
         while queue:
             pos, dist = queue.popleft()
-            
-            # Skip if exceeding steps limit
-            if dist > steps:
-                continue
+            pos_key = get_position_key(pos)
+            print(f"  Processing: {pos_key} at distance {dist}")  # Debug print
             
             # Add as a valid destination if it's not the starting position
             if dist > 0:
-                reachable.add(pos)
+                reachable.add(pos_key)
+                print(f"    Added to reachable: {pos_key}")  # Debug print
             
             # Don't explore beyond the current position if we've used all steps
-            if dist == steps:
+            if dist >= steps:
+                print(f"    Reached max steps for {pos_key}")  # Debug print
                 continue
                 
             # Explore adjacent spaces
-            for adj in self.mansion.get_adjacent_spaces(pos):
-                adj_key = getattr(adj, 'name', adj)
+            adjacents = self.mansion.get_adjacent_spaces(pos)
+            print(f"    Adjacent to {pos_key}: {[get_position_key(a) for a in adjacents]}")  # Debug print
+            
+            for adj in adjacents:
+                adj_key = get_position_key(adj)
                 
                 # Skip if already visited with same or fewer steps
                 if adj_key in visited and visited[adj_key] <= dist + 1:
+                    print(f"      Already visited {adj_key} with distance <= {dist + 1}")  # Debug print
                     continue
                     
                 visited[adj_key] = dist + 1
                 queue.append((adj, dist + 1))
+                print(f"      Added {adj_key} to queue with distance {dist + 1}")  # Debug print
                 
+        print(f"Final reachable destinations: {sorted(reachable)}")  # Debug print
         # Sort destinations for consistent output
-        return sorted(reachable, key=lambda s: getattr(s, 'name', str(s)))
+        return sorted(reachable, key=str)
+    
+    def display_board(self) -> None:
+        """Display the board layout with chess coordinates.
+        
+        Output format:
+            Rooms:
+            - Room Name (A1)
+            - Room Name (A3)
+            ...
+            
+            Corridors:
+            - C1 (E2)
+            - C2 (C2)
+            ...
+        """
+        if not hasattr(self.mansion, 'chess_coordinates'):
+            print("\nBoard display not available: no chess coordinates found.")
+            return
+            
+        output = []
+        
+        # Add rooms section
+        output.append("Rooms:")
+        
+        # Get all rooms and sort them by their coordinates for consistent ordering
+        rooms_with_coords = []
+        for room in self.mansion.rooms:
+            room_name = room.name
+            if room_name in self.mansion.chess_coordinates:
+                coord = self.mansion.chess_coordinates[room_name]
+                rooms_with_coords.append((room_name, coord))
+        
+        # Sort rooms by their coordinates (A1, A3, A5, C1, C3, etc.)
+        rooms_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))  # Sort by number then letter
+        
+        for room_name, coord in rooms_with_coords:
+            output.append(f"- {room_name} ({coord})")
+        
+        # Add corridors section
+        output.append("\nCorridors:")
+        
+        # Get all corridors and sort them by their coordinates
+        corridors_with_coords = []
+        for corridor in [f"C{i}" for i in range(1, 13)]:
+            if corridor in self.mansion.chess_coordinates:
+                coord = self.mansion.chess_coordinates[corridor]
+                corridors_with_coords.append((corridor, coord))
+        
+        # Sort corridors by their coordinates
+        corridors_with_coords.sort(key=lambda x: (x[1][1], x[1][0]))  # Sort by number then letter
+        
+        for corridor, coord in corridors_with_coords:
+            output.append(f"- {corridor} ({coord})")
+        
+        # Join all lines with newlines and print
+        full_output = '\n'.join(output)
+        
+        # Print the output through the mansion's output method if available, otherwise use print
+        if hasattr(self.mansion, 'output'):
+            self.mansion.output(full_output)
+        else:
+            print(full_output)
     
     def get_optimal_path(self, start_position, end_position, max_steps=None):
         """
@@ -185,10 +259,13 @@ class Movement:
             include_corridors: Whether to include corridors in the result
             
         Returns:
-            List of neighboring rooms (and possibly corridors)
+            List of neighboring rooms (and possibly corridors). 
+            If include_corridors is True, returns corridor names as strings.
         """
         if include_corridors:
-            return self.mansion.get_adjacent_spaces(position)
+            # Get adjacent spaces and convert any corridor objects to their string names
+            adjacent = self.mansion.get_adjacent_spaces(position)
+            return [getattr(space, 'name', space) for space in adjacent]
         else:
             return self.mansion.get_adjacent_rooms(position)
             

@@ -4,7 +4,7 @@ Configuration for pytest with Nash AI test mode support.
 import pytest
 import sys
 import time
-from cluedo_game.nash_ai_player import NashAIPlayer
+from cluedo_game.ai import NashAIPlayer
 
 def pytest_configure(config):
     """Enable test mode for Nash AI player during test runs."""

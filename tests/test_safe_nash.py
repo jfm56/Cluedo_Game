@@ -3,7 +3,7 @@ Test-safe version of the Nash AI Player with simplified behavior for tests.
 This module provides a test-compatible implementation that avoids infinite loops.
 """
 
-from cluedo_game.nash_ai_player import NashAIPlayer
+from cluedo_game.ai import NashAIPlayer
 import random
 
 class TestSafeNashAI(NashAIPlayer):

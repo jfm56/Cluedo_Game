@@ -208,7 +208,7 @@ class TestSolution:
     
     def test_repr_representation(self, solution, mock_suspect, mock_weapon, mock_room):
         """Test the string representation of a Solution instance."""
-        expected_string = f"Solution: {mock_suspect.name} with the {mock_weapon.name} in the {mock_room}"
+        expected_string = f"Solution: {mock_suspect.name} with the {mock_weapon.name} in the {mock_room.name}"
         assert repr(solution) == expected_string
     
     def test_random_solution(self):
